@@ -102,6 +102,7 @@ impl Subscriber {
         }
         self.subsciptions.retain(|sub| sub.method != payload.method);
     }
+
     /// Subscribes to trades for a specific token
     pub async fn subscribe_token(&mut self, token: &str) {
         let payload = Subscription {
@@ -131,6 +132,69 @@ impl Subscriber {
         }
         self.subsciptions.retain(|sub| sub.method != payload.method);
     }
+
+    /// Subscribes to new trades for a specific account
+    pub async fn subscribe_account(&mut self, account: &str) {
+        let payload = Subscription {
+            method: "subscribeAccount".to_string(),
+            params: vec![account.to_string()],
+        };
+        if let Some((write, _)) = &mut self.connection {
+            write
+                .send(Message::Text(serde_json::to_string(&payload).unwrap()))
+                .await
+                .unwrap();
+        }
+        self.subsciptions.push(payload)
+    }
+
+    /// Unsubscribes from trades for a specific token
+    pub async fn unsubscribe_account(&mut self, account: &str) {
+        let payload = Subscription {
+            method: "unsubscribeAccount".to_string(),
+            params: vec![account.to_string()],
+        };
+        if let Some((write, _)) = &mut self.connection {
+            write
+                .send(Message::Text(serde_json::to_string(&payload).unwrap()))
+                .await
+                .unwrap();
+        }
+        self.subsciptions.retain(|sub| sub.method != payload.method);
+    }
+
+    /// Subscribes to new publications to Raydium 
+    pub async fn subscribe_publications(&mut self) {
+        let payload = Subscription {
+            method: "subscribePublications".to_string(),
+            params: vec![],
+        };
+
+        if let Some((write, _)) = &mut self.connection {
+            write
+                .send(Message::Text(serde_json::to_string(&payload).unwrap()))
+                .await
+                .unwrap();
+        }
+        self.subsciptions.push(payload)
+    }
+
+    /// Unsubscribes from new publications to Raydium 
+    pub async fn unsubscribe_publications(&mut self) {
+        let payload = Subscription {
+            method: "unsubscribePublications".to_string(),
+            params: vec![],
+        };
+        if let Some((write, _)) = &mut self.connection {
+            write
+                .send(Message::Text(serde_json::to_string(&payload).unwrap()))
+                .await
+                .unwrap();
+        }
+        self.subsciptions.retain(|sub| sub.method != payload.method);
+    }
+
+
 
     /// Reads incoming messages and prints them
     pub async fn listen(&mut self) {

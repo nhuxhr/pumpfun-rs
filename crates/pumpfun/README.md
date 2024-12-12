@@ -82,6 +82,8 @@ println!("Sold tokens: {}", signature);
 // Set the activity to stream
 client.streams.subscribe_new_pools().await;
 client.streams.subscribe_trades().await;
+client.streams.subscribe_publications().await;
+client.streams.subscribe_account("<ACCOUNT>").await;
 client.streams.subscribe_token("<TOKEN_ACCOUNT>").await;
 
 // Stream the activity
@@ -91,6 +93,8 @@ client.streams.listen().await;
 // Unsubscribe (stop listening)
 client.streams.unsubscribe_new_pools().await;
 client.streams.unsubscribe_trades().await;
+client.streams.unsubscribe_publications().await;
+client.streams.unsubscribe_account("<ACCOUNT>").await;
 client.streams.unsubscribe_token("<TOKEN_ACCOUNT>").await;
 ```
 
