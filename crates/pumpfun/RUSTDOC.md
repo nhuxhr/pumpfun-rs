@@ -77,6 +77,20 @@ println!("Bought tokens: {}", signature);
 // Sell tokens (sell all tokens)
 let signature: Signature = client.sell(&mint.pubkey(), None, None, fee).await?;
 println!("Sold tokens: {}", signature);
+
+// Set the activity to stream
+client.streams.subscribe_new_pools().await;
+client.streams.subscribe_trades().await;
+client.streams.subscribe_token("<TOKEN_ACCOUNT>").await;
+
+// Stream the activity
+client.streams.connect().await;
+client.streams.listen().await;
+
+// Unsubscribe (stop listening)
+client.streams.unsubscribe_new_pools().await;
+client.streams.unsubscribe_trades().await;
+client.streams.unsubscribe_token("<TOKEN_ACCOUNT>").await;
 ```
 
 ## Features
