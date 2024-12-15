@@ -4,6 +4,7 @@ pub mod accounts;
 pub mod constants;
 pub mod error;
 pub mod instruction;
+pub mod streams;
 pub mod utils;
 
 use anchor_client::{
@@ -44,6 +45,8 @@ pub struct PumpFun<'a> {
     pub client: Client<Rc<&'a Keypair>>,
     /// Anchor program instance
     pub program: Program<Rc<&'a Keypair>>,
+    /// Streaming 
+    pub streams: streams::Subscriber,
 }
 
 impl<'a> PumpFun<'a> {
@@ -88,6 +91,7 @@ impl<'a> PumpFun<'a> {
             payer,
             client,
             program,
+            streams: streams::Subscriber { subsciptions: vec![], connection: None }
         }
     }
 
