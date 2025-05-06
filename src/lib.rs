@@ -1,6 +1,8 @@
 #![doc = include_str!("../RUSTDOC.md")]
 
 pub mod accounts;
+#[cfg(feature = "amm")]
+pub mod amm;
 pub mod common;
 pub mod constants;
 pub mod error;
@@ -52,6 +54,8 @@ pub struct PumpFun {
     pub rpc: Arc<RpcClient>,
     /// Cluster configuration
     pub cluster: Cluster,
+    #[cfg(feature = "amm")]
+    pub amm: amm::PumpAmm,
 }
 
 impl PumpFun {
@@ -92,9 +96,15 @@ impl PumpFun {
 
         // Return configured PumpFun client
         Self {
-            payer,
-            rpc,
-            cluster,
+            payer: payer.clone(),
+            rpc: rpc.clone(),
+            cluster: cluster.clone(),
+            #[cfg(feature = "amm")]
+            amm: amm::PumpAmm {
+                payer,
+                rpc,
+                cluster,
+            },
         }
     }
 
