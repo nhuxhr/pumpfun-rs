@@ -9,7 +9,6 @@ pub mod error;
 pub mod instructions;
 pub mod utils;
 
-use borsh::BorshDeserialize;
 use common::types::{Cluster, PriorityFee};
 use solana_client::nonblocking::rpc_client::RpcClient;
 use solana_sdk::{
@@ -1163,7 +1162,7 @@ impl PumpFun {
             .await
             .map_err(error::ClientError::SolanaClientError)?;
 
-        accounts::BondingCurveAccount::try_from_slice(&account.data)
+        solana_sdk::borsh1::try_from_slice_unchecked::<accounts::BondingCurveAccount>(&account.data)
             .map_err(error::ClientError::BorshError)
     }
 }

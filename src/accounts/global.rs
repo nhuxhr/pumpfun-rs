@@ -17,6 +17,11 @@
 //! - `initial_real_token_reserves`: Initial actual token reserves available for trading
 //! - `token_total_supply`: Total supply of tokens
 //! - `fee_basis_points`: Fee in basis points (1/100th of a percent)
+//! - `withdraw_authority`: Authority that can withdraw funds
+//! - `enable_migrate`: Flag to enable pool migration
+//! - `pool_migration_fee`: Fee for migrating pools
+//! - `creator_fee`: Fee for creators
+//! - `fee_recipients`: Array of public keys for fee recipients
 //!
 //! # Methods
 //!
@@ -39,7 +44,7 @@ pub struct GlobalAccount {
     pub fee_recipient: Pubkey,
     /// Initial virtual token reserves for price calculations
     pub initial_virtual_token_reserves: u64,
-    /// Initial virtual SOL reserves for price calculations  
+    /// Initial virtual SOL reserves for price calculations
     pub initial_virtual_sol_reserves: u64,
     /// Initial actual token reserves available for trading
     pub initial_real_token_reserves: u64,
@@ -47,6 +52,16 @@ pub struct GlobalAccount {
     pub token_total_supply: u64,
     /// Fee in basis points (1/100th of a percent)
     pub fee_basis_points: u64,
+    /// Authority that can withdraw funds
+    pub withdraw_authority: Pubkey,
+    /// Flag to enable pool migration
+    pub enable_migrate: bool,
+    /// Fee for migrating pools
+    pub pool_migration_fee: u64,
+    /// Fee for creators
+    pub creator_fee: u64,
+    /// Array of public keys for fee recipients
+    pub fee_recipients: [Pubkey; 7],
 }
 
 impl GlobalAccount {
@@ -62,6 +77,11 @@ impl GlobalAccount {
     /// * `initial_real_token_reserves` - Initial actual token reserves
     /// * `token_total_supply` - Total supply of tokens
     /// * `fee_basis_points` - Fee in basis points
+    /// * `withdraw_authority` - Authority that can withdraw funds
+    /// * `enable_migrate` - Flag to enable pool migration
+    /// * `pool_migration_fee` - Fee for migrating pools
+    /// * `creator_fee` - Fee for creators
+    /// * `fee_recipients` - Array of public keys for fee recipients
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         discriminator: u64,
@@ -73,6 +93,11 @@ impl GlobalAccount {
         initial_real_token_reserves: u64,
         token_total_supply: u64,
         fee_basis_points: u64,
+        withdraw_authority: Pubkey,
+        enable_migrate: bool,
+        pool_migration_fee: u64,
+        creator_fee: u64,
+        fee_recipients: [Pubkey; 7],
     ) -> Self {
         Self {
             discriminator,
@@ -84,6 +109,11 @@ impl GlobalAccount {
             initial_real_token_reserves,
             token_total_supply,
             fee_basis_points,
+            withdraw_authority,
+            enable_migrate,
+            pool_migration_fee,
+            creator_fee,
+            fee_recipients,
         }
     }
 
@@ -128,6 +158,11 @@ mod tests {
             500,
             1000,
             250,
+            Pubkey::new_unique(),
+            true,
+            100,
+            0,
+            [Pubkey::new_unique(); 7],
         )
     }
 
@@ -142,6 +177,11 @@ mod tests {
             u64::MAX / 2,
             u64::MAX,
             250,
+            Pubkey::new_unique(),
+            true,
+            u64::MAX,
+            u64::MAX,
+            [Pubkey::new_unique(); 7],
         )
     }
 
