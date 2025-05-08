@@ -23,6 +23,19 @@ pub mod seeds {
 
     /// Seed for metadata PDAs
     pub const METADATA_SEED: &[u8] = b"metadata";
+
+    #[cfg(feature = "amm")]
+    pub mod amm {
+        pub const GLOBAL_CONFIG_SEED: &[u8] = b"global_config";
+
+        pub const POOL_SEED: &[u8] = b"pool";
+
+        pub const POOL_LP_MINT_SEED: &[u8] = b"pool_lp_mint";
+
+        pub const POOL_AUTHORITY_SEED: &[u8] = b"pool-authority";
+
+        pub const EVENT_AUTHORITY_SEED: &[u8] = b"__event_authority";
+    }
 }
 
 /// Constants related to program accounts and authorities
@@ -44,10 +57,22 @@ pub mod accounts {
     /// Token Program ID
     pub const TOKEN_PROGRAM: Pubkey = pubkey!("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
 
+    /// Token 2022 Program ID
+    pub const TOKEN_2022_PROGRAM: Pubkey = pubkey!("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb");
+
     /// Associated Token Program ID
     pub const ASSOCIATED_TOKEN_PROGRAM: Pubkey =
         pubkey!("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
 
     /// Rent Sysvar ID
     pub const RENT: Pubkey = pubkey!("SysvarRent111111111111111111111111111111111");
+
+    /// Constant for the Pump.fun AMM program
+    #[cfg(feature = "amm")]
+    pub mod amm {
+        use solana_sdk::{pubkey, pubkey::Pubkey};
+
+        /// Public key for the Pump.fun AMM program
+        pub const PUMPAMM: Pubkey = pubkey!("pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA");
+    }
 }
