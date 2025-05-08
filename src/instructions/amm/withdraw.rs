@@ -6,9 +6,7 @@ use solana_sdk::{
     signature::Keypair,
     signer::Signer,
 };
-use spl_associated_token_account::{
-    get_associated_token_address, get_associated_token_address_with_program_id,
-};
+use spl_associated_token_account::get_associated_token_address_with_program_id;
 
 #[derive(BorshSerialize, BorshDeserialize, Clone)]
 pub struct Withdraw {
@@ -50,11 +48,19 @@ pub fn withdraw(
             AccountMeta::new_readonly(*quote_mint, false),
             AccountMeta::new(lp_mint, true),
             AccountMeta::new(
-                get_associated_token_address(&user.pubkey(), base_mint),
+                get_associated_token_address_with_program_id(
+                    &user.pubkey(),
+                    base_mint,
+                    base_token_program,
+                ),
                 true,
             ),
             AccountMeta::new(
-                get_associated_token_address(&user.pubkey(), quote_mint),
+                get_associated_token_address_with_program_id(
+                    &user.pubkey(),
+                    quote_mint,
+                    quote_token_program,
+                ),
                 true,
             ),
             AccountMeta::new(

@@ -6,9 +6,7 @@ use solana_sdk::{
     signature::Keypair,
     signer::Signer,
 };
-use spl_associated_token_account::{
-    get_associated_token_address, get_associated_token_address_with_program_id,
-};
+use spl_associated_token_account::get_associated_token_address_with_program_id;
 
 #[derive(BorshSerialize, BorshDeserialize, Clone)]
 pub struct CreatePool {
@@ -50,11 +48,19 @@ pub fn create_pool(
             AccountMeta::new_readonly(*quote_mint, false),
             AccountMeta::new(lp_mint, false),
             AccountMeta::new(
-                get_associated_token_address(&creator.pubkey(), base_mint),
+                get_associated_token_address_with_program_id(
+                    &creator.pubkey(),
+                    base_mint,
+                    base_token_program,
+                ),
                 false,
             ),
             AccountMeta::new(
-                get_associated_token_address(&creator.pubkey(), quote_mint),
+                get_associated_token_address_with_program_id(
+                    &creator.pubkey(),
+                    quote_mint,
+                    quote_token_program,
+                ),
                 false,
             ),
             AccountMeta::new(
