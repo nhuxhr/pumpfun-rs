@@ -9,7 +9,7 @@
 //! - `Sell`: Sells tokens back to the bonding curve in exchange for SOL.
 
 #[cfg(feature = "amm")]
-mod amm;
+pub mod amm;
 mod buy;
 mod create;
 mod sell;
