@@ -7,6 +7,8 @@
 //! - `BondingCurve`: Represents a bonding curve account.
 //! - `Global`: Represents the global configuration account.
 
+#[cfg(feature = "amm")]
+pub mod amm;
 mod bonding_curve;
 mod global;
 

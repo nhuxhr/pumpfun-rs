@@ -26,6 +26,19 @@ pub mod seeds {
 
     /// Seed for creator vault PDA
     pub const CREATOR_VAULT_SEED: &[u8] = b"creator-vault";
+
+    #[cfg(feature = "amm")]
+    pub mod amm {
+        pub const GLOBAL_CONFIG_SEED: &[u8] = b"global_config";
+
+        pub const POOL_SEED: &[u8] = b"pool";
+
+        pub const POOL_LP_MINT_SEED: &[u8] = b"pool_lp_mint";
+
+        pub const POOL_AUTHORITY_SEED: &[u8] = b"pool-authority";
+
+        pub const EVENT_AUTHORITY_SEED: &[u8] = b"__event_authority";
+    }
 }
 
 /// Constants related to program accounts and authorities
@@ -47,8 +60,12 @@ pub mod accounts {
     /// Token Program ID
     pub const TOKEN_PROGRAM: Pubkey = pubkey!("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
 
+    /// Token 2022 Program ID
+    pub const TOKEN_2022_PROGRAM: Pubkey = pubkey!("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb");
+
     // Global Volume Accumulator
-    pub const GLOBAL_VOLUME_ACCUMULATOR: Pubkey = pubkey!("Hq2wp8uJ9jCPsYgNHex8RtqdvMPfVGoYwjvF1ATiwn2Y");
+    pub const GLOBAL_VOLUME_ACCUMULATOR: Pubkey =
+        pubkey!("Hq2wp8uJ9jCPsYgNHex8RtqdvMPfVGoYwjvF1ATiwn2Y");
 
     /// Associated Token Program ID
     pub const ASSOCIATED_TOKEN_PROGRAM: Pubkey =
@@ -56,4 +73,13 @@ pub mod accounts {
 
     /// Rent Sysvar ID
     pub const RENT: Pubkey = pubkey!("SysvarRent111111111111111111111111111111111");
+
+    /// Constant for the Pump.fun AMM program
+    #[cfg(feature = "amm")]
+    pub mod amm {
+        use solana_sdk::{pubkey, pubkey::Pubkey};
+
+        /// Public key for the Pump.fun AMM program
+        pub const PUMPAMM: Pubkey = pubkey!("pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA");
+    }
 }
