@@ -7,7 +7,11 @@ pub mod transaction;
 
 use isahc::AsyncReadResponseExt;
 use serde::{Deserialize, Serialize};
-use std::{fs::File, io::Read};
+use solana_client::nonblocking::rpc_client::RpcClient;
+use solana_sdk::pubkey::Pubkey;
+use std::{fs::File, io::Read, sync::Arc};
+
+use crate::error;
 
 /// Metadata structure for a token, matching the format expected by Pump.fun.
 #[derive(Debug, Serialize, Deserialize)]
@@ -214,4 +218,12 @@ pub fn calculate_with_slippage_buy(amount: u64, basis_points: u64) -> u64 {
 /// ```
 pub fn calculate_with_slippage_sell(amount: u64, basis_points: u64) -> u64 {
     amount - (amount * basis_points) / 10000
+}
+
+pub async fn get_mint_token_program(
+    rpc: Arc<RpcClient>,
+    mint: &Pubkey,
+) -> Result<Pubkey, error::ClientError> {
+    let account = rpc.get_account(mint).await?;
+    Ok(account.owner)
 }
