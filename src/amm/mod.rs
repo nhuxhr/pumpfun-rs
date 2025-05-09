@@ -3,7 +3,7 @@ use std::sync::Arc;
 use futures::future::try_join_all;
 use solana_client::nonblocking::rpc_client::RpcClient;
 use solana_sdk::{
-    instruction::Instruction, pubkey::Pubkey, signature::Keypair, signer::Signer,
+    account::Account, instruction::Instruction, pubkey::Pubkey, signature::Keypair, signer::Signer,
     system_instruction,
 };
 use spl_associated_token_account::{
@@ -85,43 +85,9 @@ impl PumpAmm {
             &quote_token_program,
         );
 
-        let mut instructions = Vec::new();
-
-        if quote_mint.eq(&native_mint::ID) {
-            #[cfg(feature = "create-ata")]
-            if self
-                .rpc
-                .get_account(&user_quote_token_account)
-                .await
-                .is_err()
-            {
-                instructions.push(create_associated_token_account_idempotent(
-                    &self.payer.pubkey(),
-                    &user_quote_token_account,
-                    &native_mint::ID,
-                    &constants::accounts::TOKEN_PROGRAM,
-                ));
-            }
-            if quote_amount_in.gt(&0) {
-                instructions.push(system_instruction::transfer(
-                    &self.payer.pubkey(),
-                    &user_quote_token_account,
-                    quote_amount_in,
-                ));
-                instructions.push(
-                    sync_native(
-                        &constants::accounts::TOKEN_PROGRAM,
-                        &user_quote_token_account,
-                    )
-                    .map_err(|err| {
-                        error::ClientError::OtherError(format!(
-                            "Failed to sync native mint: {}",
-                            err
-                        ))
-                    })?,
-                );
-            }
-        }
+        let mut instructions = self
+            .get_with_wsol_instructions(quote_mint, user_quote_token_account, quote_amount_in)
+            .await?;
 
         if self
             .rpc
@@ -167,7 +133,79 @@ impl PumpAmm {
         Ok(instructions)
     }
 
-    pub fn get_deposit_instructions() {}
+    pub async fn get_deposit_instructions(
+        &self,
+        pool: Pubkey,
+        lp_token: u64,
+        max_base: u64,
+        max_quote: u64,
+    ) -> Result<Vec<Instruction>, error::ClientError> {
+        let pool_account = self.get_pool_account(&pool).await?;
+        let mint_token_programs = try_join_all(vec![
+            get_mint_token_program(self.rpc.clone(), &pool_account.1.base_mint),
+            get_mint_token_program(self.rpc.clone(), &pool_account.1.quote_mint),
+        ])
+        .await?;
+        let base_token_program = mint_token_programs[0];
+        let quote_token_program = mint_token_programs[1];
+        let user_quote_token_account = get_associated_token_address_with_program_id(
+            &self.payer.pubkey(),
+            &pool_account.1.quote_mint,
+            &quote_token_program,
+        );
+        let user_pool_token_account = get_associated_token_address_with_program_id(
+            &self.payer.pubkey(),
+            &pool_account.1.lp_mint,
+            &constants::accounts::TOKEN_2022_PROGRAM,
+        );
+
+        let mut instructions = self
+            .get_with_wsol_instructions(
+                pool_account.1.quote_mint,
+                user_quote_token_account,
+                max_quote,
+            )
+            .await?;
+
+        if pool_account
+            .0
+            .data
+            .len()
+            .lt(&(constants::POOL_ACCOUNT_SIZE as usize))
+        {
+            instructions.push(self.get_extend_account_instruction(pool));
+        }
+
+        if self
+            .rpc
+            .get_account(&user_pool_token_account)
+            .await
+            .is_err()
+        {
+            instructions.push(create_associated_token_account_idempotent(
+                &self.payer.pubkey(),
+                &user_pool_token_account,
+                &pool_account.1.lp_mint,
+                &constants::accounts::TOKEN_2022_PROGRAM,
+            ));
+        }
+
+        instructions.push(instructions::amm::deposit(
+            &self.payer.clone(),
+            &pool,
+            &pool_account.1.base_mint,
+            &pool_account.1.quote_mint,
+            &base_token_program,
+            &quote_token_program,
+            instructions::amm::Deposit {
+                lp_token_amount_out: lp_token,
+                max_base_amount_in: max_base,
+                max_quote_amount_in: max_quote,
+            },
+        ));
+
+        Ok(instructions)
+    }
 
     pub fn get_withdraw_instructions() {}
 
@@ -175,7 +213,51 @@ impl PumpAmm {
 
     pub fn get_sell_instructions() {}
 
-    pub fn get_extend_account_instruction() {}
+    pub fn get_extend_account_instruction(&self, account: Pubkey) -> Instruction {
+        instructions::amm::extend_account(
+            &self.payer,
+            &account,
+            instructions::amm::ExtendAccount {},
+        )
+    }
+
+    pub async fn get_with_wsol_instructions(
+        &self,
+        mint: Pubkey,
+        ata: Pubkey,
+        amount: u64,
+    ) -> Result<Vec<Instruction>, error::ClientError> {
+        let mut instructions = vec![];
+
+        if mint.eq(&native_mint::ID) {
+            #[cfg(feature = "create-ata")]
+            if self.rpc.get_account(&ata).await.is_err() {
+                instructions.push(create_associated_token_account_idempotent(
+                    &self.payer.pubkey(),
+                    &ata,
+                    &native_mint::ID,
+                    &constants::accounts::TOKEN_PROGRAM,
+                ));
+            }
+            if amount.gt(&0) {
+                instructions.push(system_instruction::transfer(
+                    &self.payer.pubkey(),
+                    &ata,
+                    amount,
+                ));
+                instructions.push(
+                    sync_native(&constants::accounts::TOKEN_PROGRAM, &ata).map_err(|err| {
+                        error::ClientError::OtherError(format!(
+                            "Failed to sync native mint: {}",
+                            err
+                        ))
+                    })?,
+                );
+            }
+        }
+
+        Ok(instructions)
+    }
 
     pub fn get_global_config_pda() -> Pubkey {
         let seeds: &[&[u8]; 1] = &[constants::seeds::amm::GLOBAL_CONFIG_SEED];
@@ -216,7 +298,7 @@ impl PumpAmm {
 
     pub async fn get_global_config_account(
         &self,
-    ) -> Result<accounts::amm::GlobalConfigAccount, error::ClientError> {
+    ) -> Result<(Account, accounts::amm::GlobalConfigAccount), error::ClientError> {
         let global_config: Pubkey = Self::get_global_config_pda();
 
         let account = self
@@ -225,25 +307,31 @@ impl PumpAmm {
             .await
             .map_err(error::ClientError::SolanaClientError)?;
 
-        solana_sdk::borsh1::try_from_slice_unchecked::<accounts::amm::GlobalConfigAccount>(
-            &account.data[8..],
-        )
-        .map_err(error::ClientError::BorshError)
+        Ok((
+            account.clone(),
+            solana_sdk::borsh1::try_from_slice_unchecked::<accounts::amm::GlobalConfigAccount>(
+                &account.data[8..],
+            )
+            .map_err(error::ClientError::BorshError)?,
+        ))
     }
 
     pub async fn get_pool_account(
         &self,
         pool: &Pubkey,
-    ) -> Result<accounts::amm::PoolAccount, error::ClientError> {
+    ) -> Result<(Account, accounts::amm::PoolAccount), error::ClientError> {
         let account = self
             .rpc
             .get_account(pool)
             .await
             .map_err(error::ClientError::SolanaClientError)?;
 
-        solana_sdk::borsh1::try_from_slice_unchecked::<accounts::amm::PoolAccount>(
-            &account.data[8..],
-        )
-        .map_err(error::ClientError::BorshError)
+        Ok((
+            account.clone(),
+            solana_sdk::borsh1::try_from_slice_unchecked::<accounts::amm::PoolAccount>(
+                &account.data[8..],
+            )
+            .map_err(error::ClientError::BorshError)?,
+        ))
     }
 }
