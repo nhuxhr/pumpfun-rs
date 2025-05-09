@@ -1,9 +1,20 @@
 use std::sync::Arc;
 
+use futures::future::try_join_all;
 use solana_client::nonblocking::rpc_client::RpcClient;
-use solana_sdk::{pubkey::Pubkey, signature::Keypair};
+use solana_sdk::{
+    instruction::Instruction, pubkey::Pubkey, signature::Keypair, signer::Signer,
+    system_instruction,
+};
+use spl_associated_token_account::{
+    get_associated_token_address_with_program_id,
+    instruction::create_associated_token_account_idempotent,
+};
+use spl_token::{instruction::sync_native, native_mint};
 
-use crate::{accounts, common::types::Cluster, constants, error};
+use crate::{
+    accounts, common::types::Cluster, constants, error, instructions, utils::get_mint_token_program,
+};
 
 pub struct PumpAmm {
     /// Keypair used to sign transactions
@@ -42,7 +53,119 @@ impl PumpAmm {
 
     pub fn extend_account() {}
 
-    pub fn get_create_pool_instructions() {}
+    pub async fn get_create_pool_instructions(
+        &self,
+        index: u16,
+        base_mint: Pubkey,
+        quote_mint: Pubkey,
+        base_amount_in: u64,
+        quote_amount_in: u64,
+    ) -> Result<Vec<Instruction>, error::ClientError> {
+        let pool_pda = Self::get_pool_pda(index, &self.payer.pubkey(), &base_mint, &quote_mint);
+        let mint_token_programs = try_join_all(vec![
+            get_mint_token_program(self.rpc.clone(), &base_mint),
+            get_mint_token_program(self.rpc.clone(), &quote_mint),
+        ])
+        .await?;
+        let base_token_program = mint_token_programs[0];
+        let quote_token_program = mint_token_programs[1];
+        let user_quote_token_account = get_associated_token_address_with_program_id(
+            &self.payer.pubkey(),
+            &quote_mint,
+            &quote_token_program,
+        );
+        let pool_base_token_account = get_associated_token_address_with_program_id(
+            &pool_pda,
+            &base_mint,
+            &base_token_program,
+        );
+        let pool_quote_token_account = get_associated_token_address_with_program_id(
+            &pool_pda,
+            &quote_mint,
+            &quote_token_program,
+        );
+
+        let mut instructions = Vec::new();
+
+        if quote_mint.eq(&native_mint::ID) {
+            #[cfg(feature = "create-ata")]
+            if self
+                .rpc
+                .get_account(&user_quote_token_account)
+                .await
+                .is_err()
+            {
+                instructions.push(create_associated_token_account_idempotent(
+                    &self.payer.pubkey(),
+                    &user_quote_token_account,
+                    &native_mint::ID,
+                    &constants::accounts::TOKEN_PROGRAM,
+                ));
+            }
+            if quote_amount_in.gt(&0) {
+                instructions.push(system_instruction::transfer(
+                    &self.payer.pubkey(),
+                    &user_quote_token_account,
+                    quote_amount_in,
+                ));
+                instructions.push(
+                    sync_native(
+                        &constants::accounts::TOKEN_PROGRAM,
+                        &user_quote_token_account,
+                    )
+                    .map_err(|err| {
+                        error::ClientError::OtherError(format!(
+                            "Failed to sync native mint: {}",
+                            err
+                        ))
+                    })?,
+                );
+            }
+        }
+
+        if self
+            .rpc
+            .get_account(&pool_base_token_account)
+            .await
+            .is_err()
+        {
+            instructions.push(create_associated_token_account_idempotent(
+                &self.payer.pubkey(),
+                &pool_base_token_account,
+                &base_mint,
+                &base_token_program,
+            ));
+        }
+
+        if self
+            .rpc
+            .get_account(&pool_quote_token_account)
+            .await
+            .is_err()
+        {
+            instructions.push(create_associated_token_account_idempotent(
+                &self.payer.pubkey(),
+                &pool_quote_token_account,
+                &base_mint,
+                &base_token_program,
+            ));
+        }
+
+        instructions.push(instructions::amm::create_pool(
+            &self.payer.clone(),
+            &base_mint,
+            &quote_mint,
+            &base_token_program,
+            &quote_token_program,
+            instructions::amm::CreatePool {
+                index,
+                base_amount_in,
+                quote_amount_in,
+            },
+        ));
+
+        Ok(instructions)
+    }
 
     pub fn get_deposit_instructions() {}
 
