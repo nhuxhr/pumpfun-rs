@@ -10,6 +10,9 @@
 //! - `seeds`: Contains seed values used for PDA derivation
 //! - `accounts`: Contains important program account addresses
 
+#[cfg(feature = "amm")]
+pub const POOL_ACCOUNT_SIZE: u64 = 300;
+
 /// Constants used as seeds for deriving PDAs (Program Derived Addresses)
 pub mod seeds {
     /// Seed for the global state PDA
