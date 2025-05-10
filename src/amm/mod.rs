@@ -289,7 +289,69 @@ impl PumpAmm {
         Ok(instructions)
     }
 
-    pub fn get_buy_instructions() {}
+    pub async fn get_buy_instructions(
+        &self,
+        pool: Pubkey,
+        base_out: u64,
+        max_quote_in: u64,
+        protocol_fee_recipient: Option<Pubkey>,
+    ) -> Result<Vec<Instruction>, error::ClientError> {
+        let protocol_fee_recipient = match protocol_fee_recipient {
+            Some(protocol_fee_recipient) => protocol_fee_recipient,
+            None => {
+                self.get_global_config_account()
+                    .await?
+                    .1
+                    .protocol_fee_recipients[0]
+            }
+        };
+        let pool_account = self.get_pool_account(&pool).await?;
+        let mint_token_programs = try_join_all(vec![
+            get_mint_token_program(self.rpc.clone(), &pool_account.1.base_mint),
+            get_mint_token_program(self.rpc.clone(), &pool_account.1.quote_mint),
+        ])
+        .await?;
+        let base_token_program = mint_token_programs[0];
+        let quote_token_program = mint_token_programs[1];
+        let user_quote_token_account = get_associated_token_address_with_program_id(
+            &self.payer.pubkey(),
+            &pool_account.1.quote_mint,
+            &quote_token_program,
+        );
+
+        let mut instructions = self
+            .get_with_wsol_instructions(
+                pool_account.1.quote_mint,
+                user_quote_token_account,
+                max_quote_in,
+            )
+            .await?;
+
+        if pool_account
+            .0
+            .data
+            .len()
+            .lt(&(constants::POOL_ACCOUNT_SIZE as usize))
+        {
+            instructions.push(self.get_extend_account_instruction(pool));
+        }
+
+        instructions.push(instructions::amm::buy(
+            &self.payer.clone(),
+            &pool,
+            &pool_account.1.base_mint,
+            &pool_account.1.quote_mint,
+            &base_token_program,
+            &quote_token_program,
+            &protocol_fee_recipient,
+            instructions::amm::Buy {
+                base_amount_out: base_out,
+                max_quote_amount_in: max_quote_in,
+            },
+        ));
+
+        Ok(instructions)
+    }
 
     pub fn get_sell_instructions() {}
 
