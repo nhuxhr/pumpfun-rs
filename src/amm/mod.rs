@@ -232,7 +232,7 @@ impl PumpAmm {
         {
             instructions.push(create_associated_token_account_idempotent(
                 &self.payer.pubkey(),
-                &user_pool_token_account,
+                &self.payer.pubkey(),
                 &pool_account.1.lp_mint,
                 &constants::accounts::TOKEN_2022_PROGRAM,
             ));
@@ -300,7 +300,7 @@ impl PumpAmm {
         {
             instructions.push(create_associated_token_account_idempotent(
                 &self.payer.pubkey(),
-                &user_base_token_account,
+                &self.payer.pubkey(),
                 &pool_account.1.base_mint,
                 &base_token_program,
             ));
@@ -314,7 +314,7 @@ impl PumpAmm {
         {
             instructions.push(create_associated_token_account_idempotent(
                 &self.payer.pubkey(),
-                &user_quote_token_account,
+                &self.payer.pubkey(),
                 &pool_account.1.quote_mint,
                 &quote_token_program,
             ));
