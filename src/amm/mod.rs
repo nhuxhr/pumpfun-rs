@@ -3,7 +3,11 @@ use std::sync::Arc;
 use futures::future::try_join_all;
 use solana_client::nonblocking::rpc_client::RpcClient;
 use solana_sdk::{
-    account::Account, instruction::Instruction, pubkey::Pubkey, signature::Keypair, signer::Signer,
+    account::Account,
+    instruction::Instruction,
+    pubkey::Pubkey,
+    signature::{Keypair, Signature},
+    signer::Signer,
     system_instruction,
 };
 use spl_associated_token_account::{
@@ -13,7 +17,11 @@ use spl_associated_token_account::{
 use spl_token::{instruction::sync_native, native_mint};
 
 use crate::{
-    accounts, common::types::Cluster, constants, error, instructions, utils::get_mint_token_program,
+    accounts,
+    common::types::{Cluster, PriorityFee},
+    constants, error, instructions,
+    utils::{get_mint_token_program, transaction::get_transaction},
+    PumpFun,
 };
 
 pub struct PumpAmm {
@@ -41,7 +49,47 @@ impl PumpAmm {
         }
     }
 
-    pub fn create_pool() {}
+    pub async fn create_pool(
+        &self,
+        index: u16,
+        base_mint: Pubkey,
+        quote_mint: Pubkey,
+        base_amount_in: u64,
+        quote_amount_in: u64,
+        priority_fee: Option<PriorityFee>,
+    ) -> Result<Signature, error::ClientError> {
+        let priority_fee = priority_fee.unwrap_or(self.cluster.priority_fee);
+        let mut instructions = PumpFun::get_priority_fee_instructions(&priority_fee);
+
+        let create_pool_ixs = self
+            .get_create_pool_instructions(
+                index,
+                base_mint,
+                quote_mint,
+                base_amount_in,
+                quote_amount_in,
+            )
+            .await?;
+        instructions.extend(create_pool_ixs);
+
+        let transaction = get_transaction(
+            self.rpc.clone(),
+            self.payer.clone(),
+            &instructions,
+            None,
+            #[cfg(feature = "versioned-tx")]
+            None,
+        )
+        .await?;
+
+        let signature = self
+            .rpc
+            .send_and_confirm_transaction(&transaction)
+            .await
+            .map_err(error::ClientError::SolanaClientError)?;
+
+        Ok(signature)
+    }
 
     pub fn deposit() {}
 
@@ -97,7 +145,7 @@ impl PumpAmm {
         {
             instructions.push(create_associated_token_account_idempotent(
                 &self.payer.pubkey(),
-                &pool_base_token_account,
+                &pool_pda,
                 &base_mint,
                 &base_token_program,
             ));
@@ -111,9 +159,9 @@ impl PumpAmm {
         {
             instructions.push(create_associated_token_account_idempotent(
                 &self.payer.pubkey(),
-                &pool_quote_token_account,
-                &base_mint,
-                &base_token_program,
+                &pool_pda,
+                &quote_mint,
+                &quote_token_program,
             ));
         }
 
@@ -438,7 +486,7 @@ impl PumpAmm {
             if self.rpc.get_account(&ata).await.is_err() {
                 instructions.push(create_associated_token_account_idempotent(
                     &self.payer.pubkey(),
-                    &ata,
+                    &self.payer.pubkey(),
                     &native_mint::ID,
                     &constants::accounts::TOKEN_PROGRAM,
                 ));
