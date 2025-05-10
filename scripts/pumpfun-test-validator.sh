@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Script to set up a local Solana test validator with Pump.fun and MPL Token Metadata programs.
 
@@ -40,6 +40,17 @@ create_dir() {
 create_dir "$PROGRAMS_DIR"
 create_dir "$ACCOUNTS_DIR"
 
+# Download MPL Token Metadata program if it doesn't exist
+MPL_TOKEN_METADATA_SO="$PROGRAMS_DIR/mpl-token-metadata.so"
+if [ ! -f "$MPL_TOKEN_METADATA_SO" ]; then
+    echo "Downloading MPL Token Metadata program..."
+    if ! solana program dump -u m metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s "$MPL_TOKEN_METADATA_SO"; then
+        echo "Error: Failed to download MPL Token Metadata program."
+        exit 1
+    fi
+    echo "Downloaded MPL Token Metadata program to $MPL_TOKEN_METADATA_SO"
+fi
+
 # Download Pump.fun program if it doesn't exist
 PUMPFUN_SO="$PROGRAMS_DIR/pumpfun.so"
 if [ ! -f "$PUMPFUN_SO" ]; then
@@ -51,15 +62,15 @@ if [ ! -f "$PUMPFUN_SO" ]; then
     echo "Downloaded Pump.fun program to $PUMPFUN_SO"
 fi
 
-# Download MPL Token Metadata program if it doesn't exist
-MPL_TOKEN_METADATA_SO="$PROGRAMS_DIR/mpl-token-metadata.so"
-if [ ! -f "$MPL_TOKEN_METADATA_SO" ]; then
-    echo "Downloading MPL Token Metadata program..."
-    if ! solana program dump -u m metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s "$MPL_TOKEN_METADATA_SO"; then
-        echo "Error: Failed to download MPL Token Metadata program."
+# Download Pump.fun AMM program if it doesn't exist
+PUMPAMM_SO="$PROGRAMS_DIR/pumpamm.so"
+if [ ! -f "$PUMPAMM_SO" ]; then
+    echo "Downloading Pump.fun AMM program..."
+    if ! solana program dump -u m pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA "$PUMPAMM_SO"; then
+        echo "Error: Failed to download Pump.fun AMM program."
         exit 1
     fi
-    echo "Downloaded MPL Token Metadata program to $MPL_TOKEN_METADATA_SO"
+    echo "Downloaded Pump.fun AMM program to $PUMPAMM_SO"
 fi
 
 # Download Pump.fun Global Account if it doesn't exist
@@ -74,13 +85,27 @@ if [ ! -f "$PFG_ACCOUNT_JSON" ]; then
     echo "Downloaded account data to $PFG_ACCOUNT_JSON"
 fi
 
+# Download Pump.fun AMM Global Account if it doesn't exist
+PAMMG_ACCOUNT_JSON="$ACCOUNTS_DIR/ADyA8hdefvWN2dbGGWFotbzWxrAvLW83WG6QCVXvJKqw.json"
+PAMMG_ACCOUNT_ADDRESS="ADyA8hdefvWN2dbGGWFotbzWxrAvLW83WG6QCVXvJKqw"
+if [ ! -f "$PAMMG_ACCOUNT_JSON" ]; then
+    echo "Downloading Pump.fun AMM Global Account data..."
+    if ! solana account -u m --output json --output-file "$PAMMG_ACCOUNT_JSON" "$PAMMG_ACCOUNT_ADDRESS"; then
+        echo "Error: Failed to download account data."
+        exit 1
+    fi
+    echo "Downloaded account data to $PAMMG_ACCOUNT_JSON"
+fi
+
 # Build the validator command as an array for safety
 COMMAND=(
     solana-test-validator
     -r
-    --bpf-program "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P" "$PUMPFUN_SO"
     --bpf-program "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s" "$MPL_TOKEN_METADATA_SO"
+    --bpf-program "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P" "$PUMPFUN_SO"
+    --bpf-program "pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA" "$PUMPAMM_SO"
     --account "$PFG_ACCOUNT_ADDRESS" "$PFG_ACCOUNT_JSON"
+    --account "$PAMMG_ACCOUNT_ADDRESS" "$PAMMG_ACCOUNT_JSON"
 )
 
 # Append any additional user-provided arguments
