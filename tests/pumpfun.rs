@@ -108,3 +108,62 @@ async fn test_04_sell_token() {
         .expect("Failed to sell tokens");
     println!("Signature: {}", signature);
 }
+
+#[cfg(not(skip_expensive_tests))]
+#[tokio::test]
+#[serial]
+async fn test_05_create_pool() {
+    use pumpfun::amm::PumpAmm;
+    use spl_token::native_mint;
+
+    if std::env::var("SKIP_EXPENSIVE_TESTS").is_ok() {
+        return;
+    }
+
+    let ctx = TestContext::default();
+
+    let pool = PumpAmm::get_pool_pda(0, &ctx.payer.pubkey(), &ctx.mint.pubkey(), &native_mint::ID);
+
+    // Check if the pool account already exists (optional, depending on your setup)
+    if ctx.client.rpc.get_account(&pool).await.is_err() {
+        ctx.client
+            .buy(ctx.mint.pubkey(), sol_to_lamports(1f64), None, None)
+            .await
+            .expect("Failed to buy tokens");
+
+        let signature = ctx
+            .client
+            .amm
+            .create_pool(
+                0,
+                ctx.mint.pubkey(),
+                native_mint::ID,
+                sol_to_lamports(10f64),
+                100_000,
+                None,
+            )
+            .await
+            .map_err(|err| eprintln!("Create pool error: {:#?}", err))
+            .expect("Failed to create pool");
+        println!("Signature: {}", signature);
+        println!("Pool: {}", pool);
+
+        let pool_account = ctx
+            .client
+            .amm
+            .get_pool_account(&pool)
+            .await
+            .expect("Failed to get pool account");
+        println!("Pool Account: {:#?}", pool_account.1);
+    } else {
+        let pool_account = ctx
+            .client
+            .amm
+            .get_pool_account(&pool)
+            .await
+            .expect("Failed to get pool account");
+
+        println!("Pool already exists: {}", pool);
+        println!("Pool Account: {:#?}", pool_account.1);
+    }
+}
