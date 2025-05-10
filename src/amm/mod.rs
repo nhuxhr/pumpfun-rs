@@ -207,7 +207,87 @@ impl PumpAmm {
         Ok(instructions)
     }
 
-    pub fn get_withdraw_instructions() {}
+    pub async fn get_withdraw_instructions(
+        &self,
+        pool: Pubkey,
+        lp_token_amount_in: u64,
+        min_base_amount_out: u64,
+        min_quote_amount_out: u64,
+    ) -> Result<Vec<Instruction>, error::ClientError> {
+        let pool_account = self.get_pool_account(&pool).await?;
+        let mint_token_programs = try_join_all(vec![
+            get_mint_token_program(self.rpc.clone(), &pool_account.1.base_mint),
+            get_mint_token_program(self.rpc.clone(), &pool_account.1.quote_mint),
+        ])
+        .await?;
+        let base_token_program = mint_token_programs[0];
+        let quote_token_program = mint_token_programs[1];
+        let user_base_token_account = get_associated_token_address_with_program_id(
+            &self.payer.pubkey(),
+            &pool_account.1.base_mint,
+            &base_token_program,
+        );
+        let user_quote_token_account = get_associated_token_address_with_program_id(
+            &self.payer.pubkey(),
+            &pool_account.1.quote_mint,
+            &quote_token_program,
+        );
+
+        let mut instructions = vec![];
+
+        if pool_account
+            .0
+            .data
+            .len()
+            .lt(&(constants::POOL_ACCOUNT_SIZE as usize))
+        {
+            instructions.push(self.get_extend_account_instruction(pool));
+        }
+
+        if self
+            .rpc
+            .get_account(&user_base_token_account)
+            .await
+            .is_err()
+        {
+            instructions.push(create_associated_token_account_idempotent(
+                &self.payer.pubkey(),
+                &user_base_token_account,
+                &pool_account.1.base_mint,
+                &base_token_program,
+            ));
+        }
+
+        if self
+            .rpc
+            .get_account(&user_quote_token_account)
+            .await
+            .is_err()
+        {
+            instructions.push(create_associated_token_account_idempotent(
+                &self.payer.pubkey(),
+                &user_quote_token_account,
+                &pool_account.1.quote_mint,
+                &quote_token_program,
+            ));
+        }
+
+        instructions.push(instructions::amm::withdraw(
+            &self.payer.clone(),
+            &pool,
+            &pool_account.1.base_mint,
+            &pool_account.1.quote_mint,
+            &base_token_program,
+            &quote_token_program,
+            instructions::amm::Withdraw {
+                lp_token_amount_in,
+                min_base_amount_out,
+                min_quote_amount_out,
+            },
+        ));
+
+        Ok(instructions)
+    }
 
     pub fn get_buy_instructions() {}
 
