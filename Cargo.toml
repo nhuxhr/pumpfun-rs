@@ -24,7 +24,7 @@ create-ata = []
 close-ata = []
 versioned-tx = []
 stream = ["dep:base64", "dep:futures"]
-amm = []
+amm = ["dep:futures"]
 
 [dependencies]
 base64 = { version = "0.22.1", optional = true }
