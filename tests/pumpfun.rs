@@ -1,8 +1,11 @@
 pub mod utils;
 
+use pumpfun::amm::PumpAmm;
 use pumpfun::utils::CreateTokenMetadata;
 use serial_test::serial;
 use solana_sdk::{native_token::sol_str_to_lamports, signer::Signer};
+use spl_associated_token_account::get_associated_token_address;
+use spl_token::native_mint;
 use tempfile::TempDir;
 use utils::TestContext;
 
@@ -113,15 +116,11 @@ async fn test_04_sell_token() {
 #[tokio::test]
 #[serial]
 async fn test_05_create_pool() {
-    use pumpfun::amm::PumpAmm;
-    use spl_token::native_mint;
-
     if std::env::var("SKIP_EXPENSIVE_TESTS").is_ok() {
         return;
     }
 
     let ctx = TestContext::default();
-
     let pool = PumpAmm::get_pool_pda(0, &ctx.payer.pubkey(), &ctx.mint.pubkey(), &native_mint::ID);
 
     // Check if the pool account already exists (optional, depending on your setup)
@@ -131,6 +130,14 @@ async fn test_05_create_pool() {
             .await
             .expect("Failed to buy tokens");
 
+        let ata = get_associated_token_address(&ctx.payer.pubkey(), &ctx.mint.pubkey());
+        let balance = ctx
+            .client
+            .rpc
+            .get_token_account_balance(&ata)
+            .await
+            .unwrap();
+
         let signature = ctx
             .client
             .amm
@@ -138,8 +145,8 @@ async fn test_05_create_pool() {
                 0,
                 ctx.mint.pubkey(),
                 native_mint::ID,
+                balance.amount.parse::<u64>().unwrap(),
                 sol_to_lamports(10f64),
-                100_000,
                 None,
             )
             .await
