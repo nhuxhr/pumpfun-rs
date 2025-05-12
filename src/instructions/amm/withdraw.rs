@@ -41,19 +41,19 @@ pub fn withdraw(
         constants::accounts::amm::PUMPAMM,
         &args.data(),
         vec![
-            AccountMeta::new(*pool, true),
+            AccountMeta::new(*pool, false),
             AccountMeta::new_readonly(PumpAmm::get_global_config_pda(), false),
             AccountMeta::new(user.pubkey(), true),
             AccountMeta::new_readonly(*base_mint, false),
             AccountMeta::new_readonly(*quote_mint, false),
-            AccountMeta::new(lp_mint, true),
+            AccountMeta::new(lp_mint, false),
             AccountMeta::new(
                 get_associated_token_address_with_program_id(
                     &user.pubkey(),
                     base_mint,
                     base_token_program,
                 ),
-                true,
+                false,
             ),
             AccountMeta::new(
                 get_associated_token_address_with_program_id(
@@ -61,7 +61,7 @@ pub fn withdraw(
                     quote_mint,
                     quote_token_program,
                 ),
-                true,
+                false,
             ),
             AccountMeta::new(
                 get_associated_token_address_with_program_id(
@@ -69,15 +69,15 @@ pub fn withdraw(
                     &lp_mint,
                     &constants::accounts::TOKEN_2022_PROGRAM,
                 ),
-                true,
+                false,
             ),
             AccountMeta::new(
                 get_associated_token_address_with_program_id(pool, base_mint, base_token_program),
-                true,
+                false,
             ),
             AccountMeta::new(
                 get_associated_token_address_with_program_id(pool, quote_mint, quote_token_program),
-                true,
+                false,
             ),
             AccountMeta::new_readonly(constants::accounts::TOKEN_PROGRAM, false),
             AccountMeta::new_readonly(constants::accounts::TOKEN_2022_PROGRAM, false),
