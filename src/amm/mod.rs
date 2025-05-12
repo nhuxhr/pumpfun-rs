@@ -135,7 +135,49 @@ impl PumpAmm {
         Ok(signature)
     }
 
-    pub fn withdraw() {}
+    pub async fn withdraw(
+        &self,
+        pool: Pubkey,
+        lp_token: u64,
+        slippage: u8,
+        priority_fee: Option<PriorityFee>,
+    ) -> Result<Signature, error::ClientError> {
+        let (pool_account, pool_base_balance, pool_quote_balance) =
+            self.get_pool_balances(&pool).await?;
+        let (_, _, min_base, min_quote) = utils::amm::withdraw::withdraw_lp_token(
+            lp_token,
+            slippage,
+            pool_base_balance,
+            pool_quote_balance,
+            pool_account.lp_supply,
+        )?;
+
+        let priority_fee = priority_fee.unwrap_or(self.cluster.priority_fee);
+        let mut instructions = PumpFun::get_priority_fee_instructions(&priority_fee);
+
+        let withdraw_ixs = self
+            .get_withdraw_instructions(pool, lp_token, min_base, min_quote)
+            .await?;
+        instructions.extend(withdraw_ixs);
+
+        let transaction = get_transaction(
+            self.rpc.clone(),
+            self.payer.clone(),
+            &instructions,
+            None,
+            #[cfg(feature = "versioned-tx")]
+            None,
+        )
+        .await?;
+
+        let signature = self
+            .rpc
+            .send_and_confirm_transaction(&transaction)
+            .await
+            .map_err(error::ClientError::SolanaClientError)?;
+
+        Ok(signature)
+    }
 
     pub fn buy() {}
 

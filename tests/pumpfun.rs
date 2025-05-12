@@ -1,6 +1,6 @@
 pub mod utils;
 
-use std::ops::Add;
+use std::ops::{Add, Sub};
 
 use pumpfun::amm::PumpAmm;
 use pumpfun::utils::CreateTokenMetadata;
@@ -219,6 +219,53 @@ async fn test_06_deposit_lp() {
 
     assert_eq!(
         pool_account.lp_supply.add(lp_token),
+        new_pool_account.lp_supply
+    );
+
+    ctx.client
+        .sell(ctx.mint.pubkey(), None, None, None)
+        .await
+        .expect("Failed to sell tokens");
+}
+
+#[cfg(not(skip_expensive_tests))]
+#[tokio::test]
+#[serial]
+async fn test_07_withdraw_lp() {
+    if std::env::var("SKIP_EXPENSIVE_TESTS").is_ok() {
+        return;
+    }
+
+    let ctx = TestContext::default();
+    let pool = PumpAmm::get_pool_pda(0, &ctx.payer.pubkey(), &ctx.mint.pubkey(), &native_mint::ID);
+    let pool_account = ctx
+        .client
+        .amm
+        .get_pool_account(&pool)
+        .await
+        .expect("Failed to get pool account")
+        .1;
+    let lp_token = 100_000;
+
+    let signature = ctx
+        .client
+        .amm
+        .withdraw(pool, lp_token, 0, None)
+        .await
+        .expect("Failed to withdraw LP");
+    println!("Signature: {}", signature);
+
+    let new_pool_account = ctx
+        .client
+        .amm
+        .get_pool_account(&pool)
+        .await
+        .expect("Failed to get pool account")
+        .1;
+    println!("Pool Account: {:#?}", new_pool_account);
+
+    assert_eq!(
+        pool_account.lp_supply.sub(lp_token),
         new_pool_account.lp_supply
     );
 
