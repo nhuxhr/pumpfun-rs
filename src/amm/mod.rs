@@ -20,7 +20,7 @@ use crate::{
     accounts,
     common::types::{Cluster, PriorityFee},
     constants, error, instructions,
-    utils::{get_mint_token_program, transaction::get_transaction},
+    utils::{self, get_mint_token_program, transaction::get_transaction},
     PumpFun,
 };
 
@@ -91,7 +91,49 @@ impl PumpAmm {
         Ok(signature)
     }
 
-    pub fn deposit() {}
+    pub async fn deposit(
+        &self,
+        pool: Pubkey,
+        lp_token: u64,
+        slippage: u8,
+        priority_fee: Option<PriorityFee>,
+    ) -> Result<Signature, error::ClientError> {
+        let (pool_account, pool_base_balance, pool_quote_balance) =
+            self.get_pool_balances(&pool).await?;
+        let (max_base, max_quote) = utils::amm::deposit::deposit_lp_token(
+            lp_token,
+            slippage,
+            pool_base_balance,
+            pool_quote_balance,
+            pool_account.lp_supply,
+        )?;
+
+        let priority_fee = priority_fee.unwrap_or(self.cluster.priority_fee);
+        let mut instructions = PumpFun::get_priority_fee_instructions(&priority_fee);
+
+        let deposit_ixs = self
+            .get_deposit_instructions(pool, lp_token, max_base, max_quote)
+            .await?;
+        instructions.extend(deposit_ixs);
+
+        let transaction = get_transaction(
+            self.rpc.clone(),
+            self.payer.clone(),
+            &instructions,
+            None,
+            #[cfg(feature = "versioned-tx")]
+            None,
+        )
+        .await?;
+
+        let signature = self
+            .rpc
+            .send_and_confirm_transaction(&transaction)
+            .await
+            .map_err(error::ClientError::SolanaClientError)?;
+
+        Ok(signature)
+    }
 
     pub fn withdraw() {}
 
@@ -585,5 +627,33 @@ impl PumpAmm {
             )
             .map_err(error::ClientError::BorshError)?,
         ))
+    }
+
+    pub async fn get_pool_balances(
+        &self,
+        pool: &Pubkey,
+    ) -> Result<(accounts::amm::PoolAccount, u64, u64), error::ClientError> {
+        let pool = self.get_pool_account(pool).await?.1;
+
+        let rpc = self.rpc.clone();
+        let mint_token_balances = try_join_all({
+            vec![
+                rpc.get_token_account_balance(&pool.pool_base_token_account),
+                rpc.get_token_account_balance(&pool.pool_quote_token_account),
+            ]
+        })
+        .await?;
+        let base_token_balance = mint_token_balances[0]
+            .clone()
+            .amount
+            .parse::<u64>()
+            .unwrap();
+        let quote_token_balance = mint_token_balances[1]
+            .clone()
+            .amount
+            .parse::<u64>()
+            .unwrap();
+
+        Ok((pool, base_token_balance, quote_token_balance))
     }
 }
