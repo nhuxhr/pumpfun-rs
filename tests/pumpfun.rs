@@ -1,5 +1,7 @@
 pub mod utils;
 
+use std::ops::Add;
+
 use pumpfun::amm::PumpAmm;
 use pumpfun::utils::CreateTokenMetadata;
 use serial_test::serial;
@@ -150,7 +152,6 @@ async fn test_05_create_pool() {
                 None,
             )
             .await
-            .map_err(|err| eprintln!("Create pool error: {:#?}", err))
             .expect("Failed to create pool");
         println!("Signature: {}", signature);
         println!("Pool: {}", pool);
@@ -173,4 +174,56 @@ async fn test_05_create_pool() {
         println!("Pool already exists: {}", pool);
         println!("Pool Account: {:#?}", pool_account.1);
     }
+}
+
+#[cfg(not(skip_expensive_tests))]
+#[tokio::test]
+#[serial]
+async fn test_06_deposit_lp() {
+    if std::env::var("SKIP_EXPENSIVE_TESTS").is_ok() {
+        return;
+    }
+
+    let ctx = TestContext::default();
+    let pool = PumpAmm::get_pool_pda(0, &ctx.payer.pubkey(), &ctx.mint.pubkey(), &native_mint::ID);
+    let pool_account = ctx
+        .client
+        .amm
+        .get_pool_account(&pool)
+        .await
+        .expect("Failed to get pool account")
+        .1;
+    let lp_token = 100_000;
+
+    ctx.client
+        .buy(ctx.mint.pubkey(), sol_to_lamports(1f64), None, None)
+        .await
+        .expect("Failed to buy tokens");
+
+    let signature = ctx
+        .client
+        .amm
+        .deposit(pool, lp_token, 100, None)
+        .await
+        .expect("Failed to deposit LP");
+    println!("Signature: {}", signature);
+
+    let new_pool_account = ctx
+        .client
+        .amm
+        .get_pool_account(&pool)
+        .await
+        .expect("Failed to get pool account")
+        .1;
+    println!("Pool Account: {:#?}", new_pool_account);
+
+    assert_eq!(
+        pool_account.lp_supply.add(lp_token),
+        new_pool_account.lp_supply
+    );
+
+    ctx.client
+        .sell(ctx.mint.pubkey(), None, None, None)
+        .await
+        .expect("Failed to sell tokens");
 }
