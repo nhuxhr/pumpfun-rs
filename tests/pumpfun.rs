@@ -1,12 +1,19 @@
 pub mod utils;
 
 use std::ops::{Add, Sub};
+use std::rc::Rc;
 
-use pumpfun::amm::PumpAmm;
-use pumpfun::utils::CreateTokenMetadata;
+use futures::future::try_join_all;
+use pumpfun::utils::{get_mint_token_program, CreateTokenMetadata};
+use pumpfun::{
+    amm::PumpAmm,
+    common::types::{SwapDirection, SwapInput},
+};
 use serial_test::serial;
 use solana_sdk::{native_token::sol_str_to_lamports, signer::Signer};
-use spl_associated_token_account::get_associated_token_address;
+use spl_associated_token_account::{
+    get_associated_token_address, get_associated_token_address_with_program_id,
+};
 use spl_token::native_mint;
 use tempfile::TempDir;
 use utils::TestContext;
@@ -273,4 +280,250 @@ async fn test_07_withdraw_lp() {
         .sell(ctx.mint.pubkey(), None, None, None)
         .await
         .expect("Failed to sell tokens");
+}
+
+#[cfg(not(skip_expensive_tests))]
+#[tokio::test]
+#[serial]
+async fn test_08_swap() {
+    if std::env::var("SKIP_EXPENSIVE_TESTS").is_ok() {
+        return;
+    }
+
+    let ctx = Rc::new(TestContext::default());
+    let base_mint = ctx.mint.pubkey();
+    let quote_mint = native_mint::ID;
+    let pool = PumpAmm::get_pool_pda(0, &ctx.payer.pubkey(), &base_mint, &quote_mint);
+    let global = ctx
+        .client
+        .amm
+        .get_global_config_account()
+        .await
+        .expect("Failed to get global config")
+        .1;
+
+    // Ensure pool exists and has sufficient liquidity
+    let (_, initial_base_balance, initial_quote_balance) = ctx
+        .client
+        .amm
+        .get_pool_balances(&pool)
+        .await
+        .expect("Failed to get pool balances");
+    assert!(
+        initial_base_balance > 0,
+        "Pool must have base token liquidity"
+    );
+    assert!(
+        initial_quote_balance > 0,
+        "Pool must have quote token liquidity"
+    );
+
+    let rpc = ctx.client.rpc.clone();
+    let mint_token_programs = try_join_all(vec![
+        get_mint_token_program(rpc.clone(), &base_mint),
+        get_mint_token_program(rpc.clone(), &quote_mint),
+    ])
+    .await
+    .expect("Failed to get mint token programs");
+    let base_token_program = mint_token_programs[0];
+    let quote_token_program = mint_token_programs[1];
+
+    let get_user_balances = async |ctx: Rc<TestContext>| -> (u64, u64) {
+        let user_base_token_account = get_associated_token_address_with_program_id(
+            &ctx.payer.pubkey(),
+            &base_mint,
+            &base_token_program,
+        );
+        let user_quote_token_account = get_associated_token_address_with_program_id(
+            &ctx.payer.pubkey(),
+            &quote_mint,
+            &quote_token_program,
+        );
+
+        let rpc = ctx.client.rpc.clone();
+        let mint_token_balances = try_join_all({
+            vec![
+                rpc.get_token_account_balance(&user_base_token_account),
+                rpc.get_token_account_balance(&user_quote_token_account),
+            ]
+        })
+        .await
+        .expect("Failed to get token balances");
+
+        (
+            mint_token_balances[0].amount.parse::<u64>().unwrap(),
+            mint_token_balances[1].amount.parse::<u64>().unwrap(),
+        )
+    };
+
+    // Initial token acquisition
+    ctx.client
+        .buy(ctx.mint.pubkey(), sol_to_lamports(0.01), None, None)
+        .await
+        .expect("Failed to buy initial tokens");
+
+    // Test case 1: Base input buy
+    {
+        let balances = get_user_balances(ctx.clone()).await;
+        let amount = 100_000;
+        let slippage = 1;
+
+        ctx.client
+            .amm
+            .swap(
+                pool,
+                amount,
+                slippage,
+                SwapInput::Base,
+                SwapDirection::QuoteToBase,
+                None,
+            )
+            .await
+            .expect("Base input buy failed");
+
+        let new_balances = get_user_balances(ctx.clone()).await;
+        println!(
+            "Base input buy - Previous: {:?}; New: {:?}",
+            balances, new_balances
+        );
+        assert!(new_balances.0 > balances.0, "Base balance should increase");
+        assert!(
+            new_balances.1 <= balances.1,
+            "Quote balance should decrease"
+        );
+    }
+
+    // Test case 2: Base input sell
+    {
+        let balances = get_user_balances(ctx.clone()).await;
+        let amount = 100_000;
+        let slippage = 1;
+
+        ctx.client
+            .amm
+            .swap(
+                pool,
+                amount,
+                slippage,
+                SwapInput::Base,
+                SwapDirection::BaseToQuote,
+                None,
+            )
+            .await
+            .expect("Base input sell failed");
+
+        let new_balances = get_user_balances(ctx.clone()).await;
+        println!(
+            "Base input sell - Previous: {:?}; New: {:?}",
+            balances, new_balances
+        );
+        assert_eq!(
+            balances.0.sub(amount),
+            new_balances.0,
+            "Base balance decrease should match amount"
+        );
+        assert!(new_balances.1 > balances.1, "Quote balance should increase");
+    }
+
+    // Test case 3: Quote input buy
+    {
+        let (_, pool_base_balance, pool_quote_balance) = ctx
+            .client
+            .amm
+            .get_pool_balances(&pool)
+            .await
+            .expect("Failed to get pool balances");
+
+        let balances = get_user_balances(ctx.clone()).await;
+        let amount = 100_000;
+        let slippage = 1;
+
+        let (_, expected_base, _) = pumpfun::utils::amm::buy::buy_quote_input(
+            amount,
+            slippage,
+            pool_base_balance,
+            pool_quote_balance,
+            global.lp_fee_basis_points,
+            global.protocol_fee_basis_points,
+        )
+        .expect("Failed to calculate expected base amount");
+
+        ctx.client
+            .amm
+            .swap(
+                pool,
+                amount,
+                slippage,
+                SwapInput::Quote,
+                SwapDirection::QuoteToBase,
+                None,
+            )
+            .await
+            .expect("Quote input buy failed");
+
+        let new_balances = get_user_balances(ctx.clone()).await;
+        println!(
+            "Quote input buy - Previous: {:?}; New: {:?}",
+            balances, new_balances
+        );
+        assert_eq!(
+            balances.0.add(expected_base),
+            new_balances.0,
+            "Base increase should match expected"
+        );
+    }
+
+    // Test case 4: Quote input sell
+    {
+        let (_, pool_base_balance, pool_quote_balance) = ctx
+            .client
+            .amm
+            .get_pool_balances(&pool)
+            .await
+            .expect("Failed to get pool balances");
+
+        let balances = get_user_balances(ctx.clone()).await;
+        let amount = 100_000;
+        let slippage = 1;
+
+        let (_, expected_base, _) = pumpfun::utils::amm::sell::sell_quote_input(
+            amount,
+            slippage,
+            pool_base_balance,
+            pool_quote_balance,
+            global.lp_fee_basis_points,
+            global.protocol_fee_basis_points,
+        )
+        .expect("Failed to calculate expected base amount");
+
+        ctx.client
+            .amm
+            .swap(
+                pool,
+                amount,
+                slippage,
+                SwapInput::Quote,
+                SwapDirection::BaseToQuote,
+                None,
+            )
+            .await
+            .expect("Quote input sell failed");
+
+        let new_balances = get_user_balances(ctx.clone()).await;
+        println!(
+            "Quote input sell - Previous: {:?}; New: {:?}",
+            balances, new_balances
+        );
+        assert_eq!(
+            balances.0.sub(expected_base),
+            new_balances.0,
+            "Base decrease should match expected"
+        );
+    }
+
+    // Cleanup
+    ctx.client
+        .sell(ctx.mint.pubkey(), None, None, None)
+        .await
+        .expect("Failed to sell remaining tokens");
 }

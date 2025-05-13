@@ -18,7 +18,7 @@ use spl_token::{instruction::sync_native, native_mint};
 
 use crate::{
     accounts,
-    common::types::{Cluster, PriorityFee},
+    common::types::{Cluster, PriorityFee, SwapDirection, SwapInput},
     constants, error, instructions,
     utils::{self, get_mint_token_program, transaction::get_transaction},
     PumpFun,
@@ -179,9 +179,99 @@ impl PumpAmm {
         Ok(signature)
     }
 
-    pub fn buy() {}
+    pub async fn swap(
+        &self,
+        pool: Pubkey,
+        amount: u64,
+        slippage: u8,
+        swap_input: SwapInput,
+        swap_direction: SwapDirection,
+        priority_fee: Option<PriorityFee>,
+    ) -> Result<Signature, error::ClientError> {
+        let global = self.get_global_config_account().await?.1;
+        let (_, pool_base_balance, pool_quote_balance) = self.get_pool_balances(&pool).await?;
 
-    pub fn sell() {}
+        let priority_fee = priority_fee.unwrap_or(self.cluster.priority_fee);
+        let mut instructions = PumpFun::get_priority_fee_instructions(&priority_fee);
+
+        let swap_ixs = match swap_input {
+            SwapInput::Base => match swap_direction {
+                SwapDirection::QuoteToBase => {
+                    let (_, _, max_quote) = utils::amm::buy::buy_base_input(
+                        amount,
+                        slippage,
+                        pool_base_balance,
+                        pool_quote_balance,
+                        global.lp_fee_basis_points,
+                        global.protocol_fee_basis_points,
+                    )?;
+
+                    self.get_buy_instructions(pool, amount, max_quote, None)
+                        .await?
+                }
+                SwapDirection::BaseToQuote => {
+                    let (_, _, min_quote) = utils::amm::sell::sell_base_input(
+                        amount,
+                        slippage,
+                        pool_base_balance,
+                        pool_quote_balance,
+                        global.lp_fee_basis_points,
+                        global.protocol_fee_basis_points,
+                    )?;
+
+                    self.get_sell_instructions(pool, amount, min_quote, None)
+                        .await?
+                }
+            },
+            SwapInput::Quote => match swap_direction {
+                SwapDirection::QuoteToBase => {
+                    let (_, base, max_quote) = utils::amm::buy::buy_quote_input(
+                        amount,
+                        slippage,
+                        pool_base_balance,
+                        pool_quote_balance,
+                        global.lp_fee_basis_points,
+                        global.protocol_fee_basis_points,
+                    )?;
+
+                    self.get_buy_instructions(pool, base, max_quote, None)
+                        .await?
+                }
+                SwapDirection::BaseToQuote => {
+                    let (_, base, min_quote) = utils::amm::sell::sell_quote_input(
+                        amount,
+                        slippage,
+                        pool_base_balance,
+                        pool_quote_balance,
+                        global.lp_fee_basis_points,
+                        global.protocol_fee_basis_points,
+                    )?;
+
+                    self.get_sell_instructions(pool, base, min_quote, None)
+                        .await?
+                }
+            },
+        };
+        instructions.extend(swap_ixs);
+
+        let transaction = get_transaction(
+            self.rpc.clone(),
+            self.payer.clone(),
+            &instructions,
+            None,
+            #[cfg(feature = "versioned-tx")]
+            None,
+        )
+        .await?;
+
+        let signature = self
+            .rpc
+            .send_and_confirm_transaction(&transaction)
+            .await
+            .map_err(error::ClientError::SolanaClientError)?;
+
+        Ok(signature)
+    }
 
     pub fn extend_account() {}
 
