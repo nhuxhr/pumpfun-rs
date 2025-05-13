@@ -190,3 +190,15 @@ impl Cluster {
         )
     }
 }
+
+#[cfg(feature = "amm")]
+pub enum SwapInput {
+    Base,
+    Quote,
+}
+
+#[cfg(feature = "amm")]
+pub enum SwapDirection {
+    QuoteToBase,
+    BaseToQuote,
+}
