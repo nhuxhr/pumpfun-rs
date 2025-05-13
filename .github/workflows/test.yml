@@ -25,6 +25,6 @@ jobs:
         run: |
           echo "VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT" | Out-File -FilePath $env:GITHUB_ENV -Append
           vcpkg install openssl:x64-windows-static-md
-      - run: cargo test -F versioned-tx,stream -- --skip expensive
+      - run: cargo test -F versioned-tx,stream,amm -- --skip expensive
         env:
           SKIP_EXPENSIVE_TESTS: 1
