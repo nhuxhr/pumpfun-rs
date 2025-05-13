@@ -1,19 +1,27 @@
 pub mod utils;
 
+#[cfg(feature = "amm")]
 use std::ops::{Add, Sub};
+#[cfg(feature = "amm")]
 use std::rc::Rc;
 
+#[cfg(feature = "amm")]
 use futures::future::try_join_all;
-use pumpfun::utils::{get_mint_token_program, CreateTokenMetadata};
+#[cfg(feature = "amm")]
+use pumpfun::utils::get_mint_token_program;
+use pumpfun::utils::CreateTokenMetadata;
+#[cfg(feature = "amm")]
 use pumpfun::{
     amm::PumpAmm,
     common::types::{SwapDirection, SwapInput},
 };
 use serial_test::serial;
 use solana_sdk::{native_token::sol_str_to_lamports, signer::Signer};
+#[cfg(feature = "amm")]
 use spl_associated_token_account::{
     get_associated_token_address, get_associated_token_address_with_program_id,
 };
+#[cfg(feature = "amm")]
 use spl_token::native_mint;
 use tempfile::TempDir;
 use utils::TestContext;
@@ -121,6 +129,7 @@ async fn test_04_sell_token() {
     println!("Signature: {}", signature);
 }
 
+#[cfg(feature = "amm")]
 #[cfg(not(skip_expensive_tests))]
 #[tokio::test]
 #[serial]
@@ -183,6 +192,7 @@ async fn test_05_create_pool() {
     }
 }
 
+#[cfg(feature = "amm")]
 #[cfg(not(skip_expensive_tests))]
 #[tokio::test]
 #[serial]
@@ -235,6 +245,7 @@ async fn test_06_deposit_lp() {
         .expect("Failed to sell tokens");
 }
 
+#[cfg(feature = "amm")]
 #[cfg(not(skip_expensive_tests))]
 #[tokio::test]
 #[serial]
@@ -282,6 +293,7 @@ async fn test_07_withdraw_lp() {
         .expect("Failed to sell tokens");
 }
 
+#[cfg(feature = "amm")]
 #[cfg(not(skip_expensive_tests))]
 #[tokio::test]
 #[serial]
