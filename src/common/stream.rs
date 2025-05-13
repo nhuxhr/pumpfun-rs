@@ -338,8 +338,11 @@ mod tests {
                         let mut events = events.lock().await;
                         events.push(event);
                     });
-                } else if err.is_some() {
-                    eprintln!("Error in subscription: signature={}", signature);
+                } else if let Some(err) = err {
+                    eprintln!(
+                        "Error in subscription: signature={}; err={}",
+                        signature, err
+                    );
                 }
             }
         };
