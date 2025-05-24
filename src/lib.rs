@@ -783,6 +783,7 @@ impl PumpFun {
             &self.payer,
             &mint,
             &global_account.fee_recipient,
+            &bonding_curve_account.creator,
             instructions::Buy {
                 amount: buy_amount,
                 max_sol_cost: buy_amount_with_slippage,
@@ -881,6 +882,7 @@ impl PumpFun {
             &self.payer,
             &mint,
             &global_account.fee_recipient,
+            &bonding_curve_account.creator,
             instructions::Sell {
                 amount,
                 min_sol_output,
@@ -1154,5 +1156,36 @@ impl PumpFun {
 
         solana_sdk::borsh1::try_from_slice_unchecked::<accounts::BondingCurveAccount>(&account.data)
             .map_err(error::ClientError::BorshError)
+    }
+
+    /// Gets the creator vault address (for claiming pump creator fees)
+    ///
+    /// Derives the token creator's vault using the program ID,
+    /// a constant seed, and the creator's address.
+    ///
+    /// # Arguments
+    ///
+    /// * `creator` - Public key of the token's creator
+    ///
+    /// # Returns
+    ///
+    /// Returns Some(PDA) if derivation succeeds, or None if it fails
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use pumpfun::PumpFun;
+    /// # use solana_sdk::{pubkey, pubkey::Pubkey};
+    /// #
+    /// let creator = pubkey!("Amya8kr2bzEY9kyXXXXXXXXXXXXXXXXXXXXXXXXXXXX");
+    /// if let Some(bonding_curve) = PumpFun::get_creator_vault_pda(&creator) {
+    ///     println!("Creator vault address: {}", creator);
+    /// }
+    /// ```
+    pub fn get_creator_vault_pda(creator: &Pubkey) -> Option<Pubkey> {
+        let seeds: &[&[u8]; 2] = &[constants::seeds::CREATOR_VAULT_SEED, creator.as_ref()];
+        let program_id: &Pubkey = &constants::accounts::PUMPFUN;
+        let pda: Option<(Pubkey, u8)> = Pubkey::try_find_program_address(seeds, program_id);
+        pda.map(|pubkey| pubkey.0)
     }
 }

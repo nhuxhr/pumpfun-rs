@@ -58,10 +58,12 @@ pub struct GlobalAccount {
     pub enable_migrate: bool,
     /// Fee for migrating pools
     pub pool_migration_fee: u64,
-    /// Fee for creators
-    pub creator_fee: u64,
+    /// Fee for creators in base points
+    pub creator_fee_basis_points: u64,
     /// Array of public keys for fee recipients
     pub fee_recipients: [Pubkey; 7],
+    /// Authority that sets the creator of the token
+    pub set_creator_authority: Pubkey,
 }
 
 impl GlobalAccount {
@@ -80,8 +82,9 @@ impl GlobalAccount {
     /// * `withdraw_authority` - Authority that can withdraw funds
     /// * `enable_migrate` - Flag to enable pool migration
     /// * `pool_migration_fee` - Fee for migrating pools
-    /// * `creator_fee` - Fee for creators
+    /// * `creator_fee_basis_points` - Fee for creators in base points
     /// * `fee_recipients` - Array of public keys for fee recipients
+    /// * `set_creator_authority` - Authority that sets the creator of the token
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         discriminator: u64,
@@ -96,8 +99,9 @@ impl GlobalAccount {
         withdraw_authority: Pubkey,
         enable_migrate: bool,
         pool_migration_fee: u64,
-        creator_fee: u64,
+        creator_fee_basis_points: u64,
         fee_recipients: [Pubkey; 7],
+        set_creator_authority: Pubkey,
     ) -> Self {
         Self {
             discriminator,
@@ -112,8 +116,9 @@ impl GlobalAccount {
             withdraw_authority,
             enable_migrate,
             pool_migration_fee,
-            creator_fee,
+            creator_fee_basis_points,
             fee_recipients,
+            set_creator_authority,
         }
     }
 
@@ -163,6 +168,7 @@ mod tests {
             100,
             0,
             [Pubkey::new_unique(); 7],
+            Pubkey::new_unique(),
         )
     }
 
@@ -182,6 +188,7 @@ mod tests {
             u64::MAX,
             u64::MAX,
             [Pubkey::new_unique(); 7],
+            Pubkey::new_unique(),
         )
     }
 
