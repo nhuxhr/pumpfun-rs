@@ -27,6 +27,9 @@ pub mod seeds {
     /// Seed for metadata PDAs
     pub const METADATA_SEED: &[u8] = b"metadata";
 
+    /// Seed for creator vault PDA
+    pub const CREATOR_VAULT_SEED: &[u8] = b"creator-vault";
+
     #[cfg(feature = "amm")]
     pub mod amm {
         pub const GLOBAL_CONFIG_SEED: &[u8] = b"global_config";

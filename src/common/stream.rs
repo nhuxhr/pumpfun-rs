@@ -30,6 +30,10 @@ pub struct CreateEvent {
     pub user: Pubkey,
     pub creator: Pubkey,
     pub timestamp: i64,
+    pub virtual_sol_reserves: u64,
+    pub virtual_token_reserves: u64,
+    pub real_sol_reserves: u64,
+    pub real_token_reserves: u64,
 }
 
 /// Event emitted when a token is bought or sold
@@ -48,6 +52,12 @@ pub struct TradeEvent {
     pub virtual_token_reserves: u64,
     pub real_sol_reserves: u64,
     pub real_token_reserves: u64,
+    pub fee_recipient: Pubkey,
+    pub fee_basis_points: u64,
+    pub fee: u64,
+    pub creator: Pubkey,
+    pub creator_fee_basis_points: u64,
+    pub creator_fee: u64,
 }
 
 /// Event emitted when a bonding curve operation completes
@@ -137,19 +147,23 @@ pub fn parse_event(signature: &str, data: &str) -> Result<PumpFunEvent, Box<dyn 
     match discriminator {
         // CreateEvent
         [27, 114, 169, 77, 222, 235, 99, 118] => Ok(PumpFunEvent::Create(
-            CreateEvent::try_from_slice(&decoded[8..])?,
+            CreateEvent::try_from_slice(&decoded[8..])
+                .map_err(|e| format!("Failed to decode CreateEvent: {}", e))?,
         )),
         // TradeEvent
         [189, 219, 127, 211, 78, 230, 97, 238] => Ok(PumpFunEvent::Trade(
-            TradeEvent::try_from_slice(&decoded[8..])?,
+            TradeEvent::try_from_slice(&decoded[8..])
+                .map_err(|e| format!("Failed to decode TradeEvent: {}", e))?,
         )),
         // CompleteEvent
         [95, 114, 97, 156, 212, 46, 152, 8] => Ok(PumpFunEvent::Complete(
-            CompleteEvent::try_from_slice(&decoded[8..])?,
+            CompleteEvent::try_from_slice(&decoded[8..])
+                .map_err(|e| format!("Failed to decode CompleteEvent: {}", e))?,
         )),
         // SetParamsEvent
         [223, 195, 159, 246, 62, 48, 143, 131] => Ok(PumpFunEvent::SetParams(
-            SetParamsEvent::try_from_slice(&decoded[8..])?,
+            SetParamsEvent::try_from_slice(&decoded[8..])
+                .map_err(|e| format!("Failed to decode SetParamsEvent: {}", e))?,
         )),
         _ => Err(format!("Unknown event: signature={} data={}", signature, data).into()),
     }
@@ -168,7 +182,7 @@ pub fn parse_event(signature: &str, data: &str) -> Result<PumpFunEvent, Box<dyn 
 ///
 /// * `cluster` - Solana cluster configuration containing RPC endpoints
 /// * `commitment` - Optional commitment level for the subscription. If None, uses the
-///                  default from the cluster configuration
+///   default from the cluster configuration
 /// * `callback` - A function that will be called for each event with the following parameters:
 ///   * `signature`: The transaction signature as a String
 ///   * `event`: The parsed PumpFunEvent if successful, or None if parsing failed

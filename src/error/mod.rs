@@ -16,6 +16,7 @@
 //! - `OtherError`: An error occurred that is not covered by the other error types.
 
 #[derive(Debug)]
+#[allow(clippy::large_enum_variant)]
 pub enum ClientError {
     /// Bonding curve account was not found
     BondingCurveNotFound,

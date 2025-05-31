@@ -54,6 +54,7 @@ impl Buy {
 /// * `payer` - Keypair that will provide the SOL to buy tokens
 /// * `mint` - Public key of the token mint to buy
 /// * `fee_recipient` - Public key of the account that will receive the transaction fee
+/// * `creator` - Public key of the token's creator
 /// * `args` - Buy instruction data containing the token amount and maximum acceptable SOL price
 ///
 /// # Returns
@@ -72,11 +73,18 @@ impl Buy {
 /// 7. Payer account (signer, writable)
 /// 8. System program (readonly)
 /// 9. Token program (readonly)
-/// 10. Rent sysvar (readonly)
+/// 10. Creator vault (writable)
 /// 11. Event authority (readonly)
 /// 12. Pump.fun program ID (readonly)
-pub fn buy(payer: &Keypair, mint: &Pubkey, fee_recipient: &Pubkey, args: Buy) -> Instruction {
+pub fn buy(
+    payer: &Keypair,
+    mint: &Pubkey,
+    fee_recipient: &Pubkey,
+    creator: &Pubkey,
+    args: Buy,
+) -> Instruction {
     let bonding_curve: Pubkey = PumpFun::get_bonding_curve_pda(mint).unwrap();
+    let creator_vault: Pubkey = PumpFun::get_creator_vault_pda(creator).unwrap();
     Instruction::new_with_bytes(
         constants::accounts::PUMPFUN,
         &args.data(),
@@ -90,7 +98,7 @@ pub fn buy(payer: &Keypair, mint: &Pubkey, fee_recipient: &Pubkey, args: Buy) ->
             AccountMeta::new(payer.pubkey(), true),
             AccountMeta::new_readonly(constants::accounts::SYSTEM_PROGRAM, false),
             AccountMeta::new_readonly(constants::accounts::TOKEN_PROGRAM, false),
-            AccountMeta::new_readonly(constants::accounts::RENT, false),
+            AccountMeta::new(creator_vault, false),
             AccountMeta::new_readonly(constants::accounts::EVENT_AUTHORITY, false),
             AccountMeta::new_readonly(constants::accounts::PUMPFUN, false),
         ],

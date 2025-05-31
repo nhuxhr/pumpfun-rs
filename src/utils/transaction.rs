@@ -24,10 +24,10 @@ use crate::error;
 /// * `payer` - The primary account that will pay for the transaction fees
 /// * `instructions` - Slice of Solana instructions to include in the transaction
 /// * `additional_signers` - Optional slice of additional keypair signers that should sign the transaction,
-///                         in addition to the payer
+///   in addition to the payer
 /// * `address_lookup_table_accounts` - Optional slice of Address Lookup Table accounts to include,
-///                                    enabling versioned transactions with address table lookups
-///                                    (only available with "versioned-tx" feature)
+///   enabling versioned transactions with address table lookups
+///   (only available with "versioned-tx" feature)
 ///
 /// # Returns
 ///

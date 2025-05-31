@@ -54,6 +54,7 @@ impl Sell {
 /// * `payer` - Keypair that owns the tokens to sell
 /// * `mint` - Public key of the token mint to sell
 /// * `fee_recipient` - Public key of the account that will receive the transaction fee
+/// * `creator` - Public key of the token's creator
 /// * `args` - Sell instruction data containing token amount and minimum acceptable SOL output
 ///
 /// # Returns
@@ -71,12 +72,19 @@ impl Sell {
 /// 6. Seller's token account (writable)
 /// 7. Payer account (signer, writable)
 /// 8. System program (readonly)
-/// 9. Associated token program (readonly)
+/// 9. Creator vault (writable)
 /// 10. Token program (readonly)
 /// 11. Event authority (readonly)
 /// 12. Pump.fun program ID (readonly)
-pub fn sell(payer: &Keypair, mint: &Pubkey, fee_recipient: &Pubkey, args: Sell) -> Instruction {
+pub fn sell(
+    payer: &Keypair,
+    mint: &Pubkey,
+    fee_recipient: &Pubkey,
+    creator: &Pubkey,
+    args: Sell,
+) -> Instruction {
     let bonding_curve: Pubkey = PumpFun::get_bonding_curve_pda(mint).unwrap();
+    let creator_vault: Pubkey = PumpFun::get_creator_vault_pda(creator).unwrap();
     Instruction::new_with_bytes(
         constants::accounts::PUMPFUN,
         &args.data(),
@@ -89,7 +97,7 @@ pub fn sell(payer: &Keypair, mint: &Pubkey, fee_recipient: &Pubkey, args: Sell) 
             AccountMeta::new(get_associated_token_address(&payer.pubkey(), mint), false),
             AccountMeta::new(payer.pubkey(), true),
             AccountMeta::new_readonly(constants::accounts::SYSTEM_PROGRAM, false),
-            AccountMeta::new_readonly(constants::accounts::ASSOCIATED_TOKEN_PROGRAM, false),
+            AccountMeta::new(creator_vault, false),
             AccountMeta::new_readonly(constants::accounts::TOKEN_PROGRAM, false),
             AccountMeta::new_readonly(constants::accounts::EVENT_AUTHORITY, false),
             AccountMeta::new_readonly(constants::accounts::PUMPFUN, false),

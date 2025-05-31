@@ -26,6 +26,7 @@
 //! - `get_buy_out_price`: Calculates the price to buy out all remaining tokens
 
 use borsh::{BorshDeserialize, BorshSerialize};
+use solana_sdk::pubkey::Pubkey;
 
 /// Represents a bonding curve for token pricing and liquidity management
 #[derive(Debug, Clone, BorshSerialize, BorshDeserialize)]
@@ -44,6 +45,8 @@ pub struct BondingCurveAccount {
     pub token_total_supply: u64,
     /// Whether the bonding curve is complete/finalized
     pub complete: bool,
+    /// Token creator's address
+    pub creator: Pubkey,
 }
 
 impl BondingCurveAccount {
@@ -57,6 +60,7 @@ impl BondingCurveAccount {
     /// * `real_sol_reserves` - Actual SOL reserves available
     /// * `token_total_supply` - Total supply of tokens
     /// * `complete` - Whether the curve is complete
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         discriminator: u64,
         virtual_token_reserves: u64,
@@ -65,6 +69,7 @@ impl BondingCurveAccount {
         real_sol_reserves: u64,
         token_total_supply: u64,
         complete: bool,
+        creator: Pubkey,
     ) -> Self {
         Self {
             discriminator,
@@ -74,6 +79,7 @@ impl BondingCurveAccount {
             real_sol_reserves,
             token_total_supply,
             complete,
+            creator,
         }
     }
 
@@ -204,25 +210,27 @@ mod tests {
 
     fn get_bonding_curve() -> BondingCurveAccount {
         BondingCurveAccount::new(
-            1,     // discriminator
-            1000,  // virtual_token_reserves
-            1000,  // virtual_sol_reserves
-            500,   // real_token_reserves
-            500,   // real_sol_reserves
-            1000,  // token_total_supply
-            false, // complete
+            1,                    // discriminator
+            1000,                 // virtual_token_reserves
+            1000,                 // virtual_sol_reserves
+            500,                  // real_token_reserves
+            500,                  // real_sol_reserves
+            1000,                 // token_total_supply
+            false,                // complete
+            Pubkey::new_unique(), // creator
         )
     }
 
     fn get_large_bonding_curve() -> BondingCurveAccount {
         BondingCurveAccount::new(
-            1,            // discriminator
-            u64::MAX / 2, // virtual_token_reserves
-            u64::MAX / 2, // virtual_sol_reserves
-            u64::MAX / 4, // real_token_reserves
-            u64::MAX / 4, // real_sol_reserves
-            u64::MAX / 2, // token_total_supply
-            false,        // complete
+            1,                    // discriminator
+            u64::MAX / 2,         // virtual_token_reserves
+            u64::MAX / 2,         // virtual_sol_reserves
+            u64::MAX / 4,         // real_token_reserves
+            u64::MAX / 4,         // real_sol_reserves
+            u64::MAX / 2,         // token_total_supply
+            false,                // complete
+            Pubkey::new_unique(), // creator
         )
     }
 
