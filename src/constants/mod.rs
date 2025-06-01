@@ -41,6 +41,8 @@ pub mod seeds {
         pub const POOL_AUTHORITY_SEED: &[u8] = b"pool-authority";
 
         pub const EVENT_AUTHORITY_SEED: &[u8] = b"__event_authority";
+
+        pub const CREATOR_VAULT: &[u8] = b"creator_vault";
     }
 }
 

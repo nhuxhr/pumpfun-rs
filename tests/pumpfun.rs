@@ -439,7 +439,7 @@ async fn test_08_swap() {
 
     // Test case 3: Quote input buy
     {
-        let (_, pool_base_balance, pool_quote_balance) = ctx
+        let (pool_account, pool_base_balance, pool_quote_balance) = ctx
             .client
             .amm
             .get_pool_balances(&pool)
@@ -457,6 +457,8 @@ async fn test_08_swap() {
             pool_quote_balance,
             global.lp_fee_basis_points,
             global.protocol_fee_basis_points,
+            global.coin_creator_fee_basis_points,
+            &pool_account.coin_creator,
         )
         .expect("Failed to calculate expected base amount");
 
@@ -487,7 +489,7 @@ async fn test_08_swap() {
 
     // Test case 4: Quote input sell
     {
-        let (_, pool_base_balance, pool_quote_balance) = ctx
+        let (pool_account, pool_base_balance, pool_quote_balance) = ctx
             .client
             .amm
             .get_pool_balances(&pool)
@@ -505,6 +507,8 @@ async fn test_08_swap() {
             pool_quote_balance,
             global.lp_fee_basis_points,
             global.protocol_fee_basis_points,
+            global.coin_creator_fee_basis_points,
+            &pool_account.coin_creator,
         )
         .expect("Failed to calculate expected base amount");
 

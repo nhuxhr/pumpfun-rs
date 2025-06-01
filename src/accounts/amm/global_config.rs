@@ -23,6 +23,9 @@ pub struct GlobalConfigAccount {
 
     /// Addresses of the protocol fee recipients
     pub protocol_fee_recipients: [Pubkey; 8],
+
+    /// The coin creator fee in basis points (0.01%)
+    pub coin_creator_fee_basis_points: u64,
 }
 
 impl GlobalConfigAccount {
@@ -33,6 +36,7 @@ impl GlobalConfigAccount {
         protocol_fee_basis_points: u64,
         disable_flags: u8,
         protocol_fee_recipients: [Pubkey; 8],
+        coin_creator_fee_basis_points: u64,
     ) -> Self {
         Self {
             admin,
@@ -40,6 +44,7 @@ impl GlobalConfigAccount {
             protocol_fee_basis_points,
             disable_flags,
             protocol_fee_recipients,
+            coin_creator_fee_basis_points,
         }
     }
 

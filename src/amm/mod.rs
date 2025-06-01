@@ -8,7 +8,7 @@ use solana_sdk::{
     pubkey::Pubkey,
     signature::{Keypair, Signature},
     signer::Signer,
-    system_instruction,
+    system_instruction, system_program,
 };
 use spl_associated_token_account::{
     get_associated_token_address_with_program_id,
@@ -189,7 +189,8 @@ impl PumpAmm {
         priority_fee: Option<PriorityFee>,
     ) -> Result<Signature, error::ClientError> {
         let global = self.get_global_config_account().await?.1;
-        let (_, pool_base_balance, pool_quote_balance) = self.get_pool_balances(&pool).await?;
+        let (pool_account, pool_base_balance, pool_quote_balance) =
+            self.get_pool_balances(&pool).await?;
 
         let priority_fee = priority_fee.unwrap_or(self.cluster.priority_fee);
         let mut instructions = PumpFun::get_priority_fee_instructions(&priority_fee);
@@ -204,6 +205,8 @@ impl PumpAmm {
                         pool_quote_balance,
                         global.lp_fee_basis_points,
                         global.protocol_fee_basis_points,
+                        global.coin_creator_fee_basis_points,
+                        &pool_account.coin_creator,
                     )?;
 
                     self.get_buy_instructions(pool, amount, max_quote, None)
@@ -217,6 +220,8 @@ impl PumpAmm {
                         pool_quote_balance,
                         global.lp_fee_basis_points,
                         global.protocol_fee_basis_points,
+                        global.coin_creator_fee_basis_points,
+                        &pool_account.coin_creator,
                     )?;
 
                     self.get_sell_instructions(pool, amount, min_quote, None)
@@ -232,6 +237,8 @@ impl PumpAmm {
                         pool_quote_balance,
                         global.lp_fee_basis_points,
                         global.protocol_fee_basis_points,
+                        global.coin_creator_fee_basis_points,
+                        &pool_account.coin_creator,
                     )?;
 
                     self.get_buy_instructions(pool, base, max_quote, None)
@@ -245,6 +252,8 @@ impl PumpAmm {
                         pool_quote_balance,
                         global.lp_fee_basis_points,
                         global.protocol_fee_basis_points,
+                        global.coin_creator_fee_basis_points,
+                        &pool_account.coin_creator,
                     )?;
 
                     self.get_sell_instructions(pool, base, min_quote, None)
@@ -349,6 +358,7 @@ impl PumpAmm {
                 index,
                 base_amount_in,
                 quote_amount_in,
+                coin_creator: system_program::ID,
             },
         ));
 
@@ -566,6 +576,7 @@ impl PumpAmm {
             &base_token_program,
             &quote_token_program,
             &protocol_fee_recipient,
+            &pool_account.1.coin_creator,
             instructions::amm::Buy {
                 base_amount_out: base_out,
                 max_quote_amount_in: max_quote_in,
@@ -630,6 +641,7 @@ impl PumpAmm {
             &base_token_program,
             &quote_token_program,
             &protocol_fee_recipient,
+            &pool_account.1.coin_creator,
             instructions::amm::Sell {
                 base_amount_in,
                 min_quote_amount_out,
@@ -719,6 +731,11 @@ impl PumpAmm {
 
     pub fn get_event_authority_pda() -> Pubkey {
         let seeds: &[&[u8]] = &[constants::seeds::amm::EVENT_AUTHORITY_SEED];
+        Pubkey::find_program_address(seeds, &constants::accounts::amm::PUMPAMM).0
+    }
+
+    pub fn get_coin_creator_vault_authority_pda(coin_creator: &Pubkey) -> Pubkey {
+        let seeds: &[&[u8]] = &[constants::seeds::amm::CREATOR_VAULT, coin_creator.as_ref()];
         Pubkey::find_program_address(seeds, &constants::accounts::amm::PUMPAMM).0
     }
 

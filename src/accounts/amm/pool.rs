@@ -30,6 +30,9 @@ pub struct PoolAccount {
 
     /// True circulating supply without burns and lock-ups
     pub lp_supply: u64,
+
+    /// The coin creator
+    pub coin_creator: Pubkey,
 }
 
 impl PoolAccount {
@@ -45,6 +48,7 @@ impl PoolAccount {
         pool_base_token_account: Pubkey,
         pool_quote_token_account: Pubkey,
         lp_supply: u64,
+        coin_creator: Pubkey,
     ) -> Self {
         Self {
             pool_bump,
@@ -56,6 +60,7 @@ impl PoolAccount {
             pool_base_token_account,
             pool_quote_token_account,
             lp_supply,
+            coin_creator,
         }
     }
 }

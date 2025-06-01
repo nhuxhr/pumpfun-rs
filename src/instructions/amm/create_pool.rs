@@ -13,6 +13,7 @@ pub struct CreatePool {
     pub index: u16,
     pub base_amount_in: u64,
     pub quote_amount_in: u64,
+    pub coin_creator: Pubkey,
 }
 
 impl CreatePool {

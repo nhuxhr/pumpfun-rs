@@ -1,3 +1,7 @@
+#![allow(clippy::too_many_arguments)]
+
+use solana_sdk::pubkey::Pubkey;
+
 use crate::error;
 
 use super::{fee, MAX_FEE_BASIS_POINTS};
@@ -23,13 +27,10 @@ pub fn buy_base_input(
     quote_reserve: u64,
     lp_fee_bps: u64,
     protocol_fee_bps: u64,
+    coin_creator_fee_bps: u64,
+    coin_creator: &Pubkey,
 ) -> Result<(u64, u64, u64), error::ClientError> {
     // Basic validations
-    if base == 0 {
-        return Err(error::ClientError::OtherError(
-            "Invalid input: 'base' cannot be zero".into(),
-        ));
-    }
     if base_reserve == 0 || quote_reserve == 0 {
         return Err(error::ClientError::OtherError(
             "Invalid input: 'base_reserve' or 'quote_reserve' cannot be zero".into(),
@@ -67,12 +68,21 @@ pub fn buy_base_input(
     // Calculate fees
     let lp_fee = fee(quote_amount_in, lp_fee_bps)?;
     let protocol_fee = fee(quote_amount_in, protocol_fee_bps)?;
+    let coin_creator_fee = if Pubkey::default().eq(coin_creator) {
+        0
+    } else {
+        fee(quote_amount_in, coin_creator_fee_bps)?
+    };
     let total_quote = quote_amount_in
         .checked_add(lp_fee)
         .ok_or(error::ClientError::OtherError(
             "Fee addition overflow".into(),
         ))?
         .checked_add(protocol_fee)
+        .ok_or(error::ClientError::OtherError(
+            "Fee addition overflow".into(),
+        ))?
+        .checked_add(coin_creator_fee)
         .ok_or(error::ClientError::OtherError(
             "Fee addition overflow".into(),
         ))?;
@@ -115,13 +125,10 @@ pub fn buy_quote_input(
     quote_reserve: u64,
     lp_fee_bps: u64,
     protocol_fee_bps: u64,
+    coin_creator_fee_bps: u64,
+    coin_creator: &Pubkey,
 ) -> Result<(u64, u64, u64), error::ClientError> {
     // Basic validations
-    if quote == 0 {
-        return Err(error::ClientError::OtherError(
-            "Invalid input: 'quote' cannot be zero".into(),
-        ));
-    }
     if base_reserve == 0 || quote_reserve == 0 {
         return Err(error::ClientError::OtherError(
             "Invalid input: 'base_reserve' or 'quote_reserve' cannot be zero".into(),
@@ -129,12 +136,20 @@ pub fn buy_quote_input(
     }
 
     // Calculate total fee basis points and denominator
-    let total_fee_bps =
-        lp_fee_bps
-            .checked_add(protocol_fee_bps)
-            .ok_or(error::ClientError::OtherError(
-                "Fee addition overflow".into(),
-            ))?;
+    let coin_creator_fee_bps = if Pubkey::default().eq(coin_creator) {
+        0
+    } else {
+        coin_creator_fee_bps
+    };
+    let total_fee_bps = lp_fee_bps
+        .checked_add(protocol_fee_bps)
+        .ok_or(error::ClientError::OtherError(
+            "Fee addition overflow".into(),
+        ))?
+        .checked_add(coin_creator_fee_bps)
+        .ok_or(error::ClientError::OtherError(
+            "Fee addition overflow".into(),
+        ))?;
     let denominator =
         MAX_FEE_BASIS_POINTS
             .checked_add(total_fee_bps)
