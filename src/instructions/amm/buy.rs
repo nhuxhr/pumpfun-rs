@@ -34,8 +34,11 @@ pub fn buy(
     base_token_program: &Pubkey,
     quote_token_program: &Pubkey,
     protocol_fee_recipient: &Pubkey,
+    coin_creator: &Pubkey,
     args: Buy,
 ) -> Instruction {
+    let coin_creator_vault_authority = PumpAmm::get_coin_creator_vault_authority_pda(coin_creator);
+
     Instruction::new_with_bytes(
         constants::accounts::amm::PUMPAMM,
         &args.data(),
@@ -84,6 +87,15 @@ pub fn buy(
             AccountMeta::new_readonly(constants::accounts::ASSOCIATED_TOKEN_PROGRAM, false),
             AccountMeta::new_readonly(PumpAmm::get_event_authority_pda(), false),
             AccountMeta::new_readonly(constants::accounts::amm::PUMPAMM, false),
+            AccountMeta::new(
+                get_associated_token_address_with_program_id(
+                    &coin_creator_vault_authority,
+                    quote_mint,
+                    quote_token_program,
+                ),
+                false,
+            ),
+            AccountMeta::new_readonly(coin_creator_vault_authority, false),
         ],
     )
 }
