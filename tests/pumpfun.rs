@@ -543,3 +543,24 @@ async fn test_08_swap() {
         .await
         .expect("Failed to sell remaining tokens");
 }
+
+#[cfg(feature = "amm")]
+#[cfg(not(skip_expensive_tests))]
+#[tokio::test]
+#[serial]
+async fn test_09_extend_account() {
+    if std::env::var("SKIP_EXPENSIVE_TESTS").is_ok() {
+        return;
+    }
+
+    let ctx = TestContext::default();
+    let pool = PumpAmm::get_pool_pda(0, &ctx.payer.pubkey(), &ctx.mint.pubkey(), &native_mint::ID);
+
+    let signature = ctx
+        .client
+        .amm
+        .extend_account(pool, None)
+        .await
+        .expect("Failed to extend account");
+    println!("Signature: {}", signature);
+}

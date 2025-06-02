@@ -282,7 +282,33 @@ impl PumpAmm {
         Ok(signature)
     }
 
-    pub fn extend_account() {}
+    pub async fn extend_account(
+        &self,
+        pool: Pubkey,
+        priority_fee: Option<PriorityFee>,
+    ) -> Result<Signature, error::ClientError> {
+        let priority_fee = priority_fee.unwrap_or(self.cluster.priority_fee);
+        let mut instructions = PumpFun::get_priority_fee_instructions(&priority_fee);
+        instructions.push(self.get_extend_account_instruction(pool));
+
+        let transaction = get_transaction(
+            self.rpc.clone(),
+            self.payer.clone(),
+            &instructions,
+            None,
+            #[cfg(feature = "versioned-tx")]
+            None,
+        )
+        .await?;
+
+        let signature = self
+            .rpc
+            .send_and_confirm_transaction(&transaction)
+            .await
+            .map_err(error::ClientError::SolanaClientError)?;
+
+        Ok(signature)
+    }
 
     pub async fn get_create_pool_instructions(
         &self,
