@@ -1100,6 +1100,33 @@ impl PumpFun {
             .map_err(error::ClientError::BorshError)
     }
 
+    /// Returns the PDA of the global volume accumulator account.
+    ///
+    /// # Returns
+    /// Constant PDA of the global volume accumulator.
+    pub fn get_global_volume_accumulator_pda() -> Pubkey {
+        let (global_volume_accumulator, _bump) = Pubkey::find_program_address(
+            &[b"global_volume_accumulator"],
+            &Pubkey::from_str_const("6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P"),
+        );
+        global_volume_accumulator
+    }
+
+    /// Returns the PDA of a user volume accumulator account.
+    ///
+    /// # Arguments
+    /// * `user` - Public key of the user.
+    ///
+    /// # Returns
+    /// PDA of the corresponding user volume accumulator account.
+    pub fn get_user_volume_accumulator_pda(user: &Pubkey) -> Pubkey {
+        let (user_volume_accumulator, _bump) = Pubkey::find_program_address(
+            &[b"user_volume_accumulator", user.as_ref()],
+            &Pubkey::from_str_const("6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P"),
+        );
+        user_volume_accumulator
+    }
+
     /// Gets a token's bonding curve account data containing pricing parameters
     ///
     /// Fetches and deserializes a token's bonding curve account which contains the
