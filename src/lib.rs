@@ -1100,18 +1100,6 @@ impl PumpFun {
             .map_err(error::ClientError::BorshError)
     }
 
-    /// Returns the PDA of the global volume accumulator account.
-    ///
-    /// # Returns
-    /// Constant PDA of the global volume accumulator.
-    pub fn get_global_volume_accumulator_pda() -> Pubkey {
-        let (global_volume_accumulator, _bump) = Pubkey::find_program_address(
-            &[b"global_volume_accumulator"],
-            &Pubkey::from_str_const("6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P"),
-        );
-        global_volume_accumulator
-    }
-
     /// Returns the PDA of a user volume accumulator account.
     ///
     /// # Arguments
