@@ -144,7 +144,12 @@ async fn test_05_create_pool() {
     // Check if the pool account already exists (optional, depending on your setup)
     if ctx.client.rpc.get_account(&pool).await.is_err() {
         ctx.client
-            .buy(ctx.mint.pubkey(), sol_to_lamports(1f64), None, None)
+            .buy(
+                ctx.mint.pubkey(),
+                sol_str_to_lamports("1.0").unwrap(),
+                None,
+                None,
+            )
             .await
             .expect("Failed to buy tokens");
 
@@ -164,7 +169,7 @@ async fn test_05_create_pool() {
                 ctx.mint.pubkey(),
                 native_mint::ID,
                 balance.amount.parse::<u64>().unwrap(),
-                sol_to_lamports(10f64),
+                sol_str_to_lamports("10.0").unwrap(),
                 None,
             )
             .await
@@ -213,7 +218,12 @@ async fn test_06_deposit_lp() {
     let lp_token = 100_000;
 
     ctx.client
-        .buy(ctx.mint.pubkey(), sol_to_lamports(1f64), None, None)
+        .buy(
+            ctx.mint.pubkey(),
+            sol_str_to_lamports("1.0").unwrap(),
+            None,
+            None,
+        )
         .await
         .expect("Failed to buy tokens");
 
@@ -370,7 +380,12 @@ async fn test_08_swap() {
 
     // Initial token acquisition
     ctx.client
-        .buy(ctx.mint.pubkey(), sol_to_lamports(0.01), None, None)
+        .buy(
+            ctx.mint.pubkey(),
+            sol_str_to_lamports("0.01").unwrap(),
+            None,
+            None,
+        )
         .await
         .expect("Failed to buy initial tokens");
 
