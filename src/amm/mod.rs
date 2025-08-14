@@ -765,6 +765,14 @@ impl PumpAmm {
         Pubkey::find_program_address(seeds, &constants::accounts::amm::PUMPAMM).0
     }
 
+    pub fn get_user_volume_accumulator_pda(user: &Pubkey) -> Pubkey {
+        let (user_volume_accumulator, _bump) = Pubkey::find_program_address(
+            &[b"user_volume_accumulator", user.as_ref()],
+            &constants::accounts::amm::PUMPAMM,
+        );
+        user_volume_accumulator
+    }
+
     pub async fn get_global_config_account(
         &self,
     ) -> Result<(Account, accounts::amm::GlobalConfigAccount), error::ClientError> {

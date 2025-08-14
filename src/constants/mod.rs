@@ -86,5 +86,9 @@ pub mod accounts {
 
         /// Public key for the Pump.fun AMM program
         pub const PUMPAMM: Pubkey = pubkey!("pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA");
+
+        // Global Volume Accumulator
+        pub const GLOBAL_VOLUME_ACCUMULATOR: Pubkey =
+            pubkey!("C2aFPdENg4A2HQsmrd5rTw5TaYBX5Ku887cWjbFKtZpw");
     }
 }

@@ -96,6 +96,11 @@ pub fn buy(
                 false,
             ),
             AccountMeta::new_readonly(coin_creator_vault_authority, false),
+            AccountMeta::new(constants::accounts::amm::GLOBAL_VOLUME_ACCUMULATOR, false),
+            AccountMeta::new(
+                PumpAmm::get_user_volume_accumulator_pda(&user.pubkey()),
+                false,
+            ),
         ],
     )
 }
