@@ -1214,4 +1214,17 @@ impl PumpFun {
         );
         user_volume_accumulator
     }
+
+    /// Returns the PDA of fee config account.
+    ///
+    /// # Returns
+    /// PDA of the fee config account.
+    pub fn get_fee_config_pda() -> Pubkey {
+        let seeds = &[
+            constants::seeds::FEE_CONFIG_SEED,
+            constants::accounts::PUMPFUN.as_ref(),
+        ];
+        let program_id = &constants::accounts::FEE_PROGRAM;
+        Pubkey::find_program_address(seeds, program_id).0
+    }
 }

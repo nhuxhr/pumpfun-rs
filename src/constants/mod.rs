@@ -26,6 +26,9 @@ pub mod seeds {
 
     /// Seed for creator vault PDA
     pub const CREATOR_VAULT_SEED: &[u8] = b"creator-vault";
+
+    /// Seed for fee config PDA
+    pub const FEE_CONFIG_SEED: &[u8] = b"fee_config";
 }
 
 /// Constants related to program accounts and authorities
@@ -48,11 +51,15 @@ pub mod accounts {
     pub const TOKEN_PROGRAM: Pubkey = pubkey!("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
 
     // Global Volume Accumulator
-    pub const GLOBAL_VOLUME_ACCUMULATOR: Pubkey = pubkey!("Hq2wp8uJ9jCPsYgNHex8RtqdvMPfVGoYwjvF1ATiwn2Y");
+    pub const GLOBAL_VOLUME_ACCUMULATOR: Pubkey =
+        pubkey!("Hq2wp8uJ9jCPsYgNHex8RtqdvMPfVGoYwjvF1ATiwn2Y");
 
     /// Associated Token Program ID
     pub const ASSOCIATED_TOKEN_PROGRAM: Pubkey =
         pubkey!("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
+
+    /// Fee Program ID
+    pub const FEE_PROGRAM: Pubkey = pubkey!("pfeeUxB6jkeY1Hxd7CsFCAjcbHA9rWtchMGdZ6VojVZ");
 
     /// Rent Sysvar ID
     pub const RENT: Pubkey = pubkey!("SysvarRent111111111111111111111111111111111");
