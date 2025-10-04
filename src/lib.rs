@@ -7,6 +7,7 @@ pub mod error;
 pub mod instructions;
 pub mod utils;
 
+use accounts::{BondingCurveAccount, GlobalAccount};
 use common::types::{Cluster, PriorityFee};
 use solana_client::nonblocking::rpc_client::RpcClient;
 use solana_sdk::{
@@ -759,6 +760,50 @@ impl PumpFun {
     /// # Ok(())
     /// # }
     /// ```
+    
+    pub fn get_buy_instructions_fast(
+        &self,
+        mint: Pubkey,
+        amount_sol: u64,
+        slippage_basis_points: Option<u64>,
+        global_account: &GlobalAccount,
+        bonding_curve_account: &BondingCurveAccount
+    ) -> Result<Vec<Instruction>, error::ClientError> {
+        // Get accounts and calculate buy amounts
+        let buy_amount = bonding_curve_account
+            .get_buy_price(amount_sol)
+            .map_err(error::ClientError::BondingCurveError)?;
+        let buy_amount_with_slippage =
+            utils::calculate_with_slippage_buy(amount_sol, slippage_basis_points.unwrap_or(500));
+
+        let mut instructions = Vec::new();
+
+        // Create Associated Token Account if needed
+        #[cfg(feature = "create-ata")]
+        {
+            instructions.push(create_associated_token_account(
+                &self.payer.pubkey(),
+                &self.payer.pubkey(),
+                &mint,
+                &constants::accounts::TOKEN_PROGRAM,
+            ));
+        }
+
+        // Add buy instruction
+        instructions.push(instructions::buy(
+            &self.payer,
+            &mint,
+            &global_account.fee_recipient,
+            &bonding_curve_account.creator,
+            instructions::Buy {
+                amount: buy_amount,
+                max_sol_cost: buy_amount_with_slippage,
+            },
+        ));
+
+        Ok(instructions)
+    } 
+
     pub async fn get_buy_instructions(
         &self,
         mint: Pubkey,
