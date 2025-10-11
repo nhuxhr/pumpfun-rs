@@ -16,7 +16,10 @@ This library provides a Rust interface for interacting with the Pump.fun Solana 
 Pump.fun is a Solana-based marketplace that enables users to create and distribute their own tokens, primarily memecoins.
 
 ## Getting Started
-
+```sh
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source "$HOME/.cargo/env"
+```
 Add this crate to your project using cargo:
 
 ```sh

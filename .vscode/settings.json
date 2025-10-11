@@ -1,3 +1,6 @@
 {
-  "cSpell.words": ["memecoins", "PKGID", "pumpfun", "raydium", "RUSTDOC"]
+  "cSpell.words": ["memecoins", "PKGID", "pumpfun", "raydium", "RUSTDOC"],
+  "editor.fontFamily": "'Courier New', Menlo, Monaco, monospace",
+  "editor.fontSize": 12,
+  "terminal.integrated.tabs.defaultColor": "terminal.ansiBlack"
 }

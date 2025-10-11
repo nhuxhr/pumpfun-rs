@@ -3,7 +3,7 @@
 //! This module provides the functionality to buy tokens from bonding curves.
 //! It includes the instruction data structure and helper function to build the Solana instruction.
 
-use crate::{constants, PumpFun};
+use crate::{constants::{self}, PumpFun};
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_sdk::{
     instruction::{AccountMeta, Instruction},

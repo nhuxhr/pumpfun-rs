@@ -20,7 +20,7 @@ use crate::{constants, error};
 ///
 /// This event contains information about a newly created token, including its
 /// metadata, mint address, bonding curve address, and the accounts involved.
-#[derive(BorshSerialize, BorshDeserialize, Debug, Serialize, Deserialize)]
+#[derive(BorshSerialize, BorshDeserialize, Debug, Serialize, Deserialize, Clone)]
 pub struct CreateEvent {
     pub name: String,
     pub symbol: String,
@@ -40,7 +40,7 @@ pub struct CreateEvent {
 ///
 /// This event contains details about a trade transaction, including the amounts
 /// exchanged, the type of trade (buy/sell), and the updated bonding curve state.
-#[derive(BorshSerialize, BorshDeserialize, Debug, Serialize, Deserialize)]
+#[derive(BorshSerialize, BorshDeserialize, Debug, Serialize, Deserialize, Clone)]
 pub struct TradeEvent {
     pub mint: Pubkey,
     pub sol_amount: u64,
@@ -69,7 +69,7 @@ pub struct TradeEvent {
 ///
 /// This event signals the completion of a bonding curve operation,
 /// providing information about the involved accounts.
-#[derive(BorshSerialize, BorshDeserialize, Debug, Serialize, Deserialize)]
+#[derive(BorshSerialize, BorshDeserialize, Debug, Serialize, Deserialize, Clone)]
 pub struct CompleteEvent {
     pub user: Pubkey,
     pub mint: Pubkey,
@@ -81,7 +81,7 @@ pub struct CompleteEvent {
 ///
 /// This event contains information about updates to the global program parameters,
 /// including fee settings and initial bonding curve configuration values.
-#[derive(BorshSerialize, BorshDeserialize, Debug, Serialize, Deserialize)]
+#[derive(BorshSerialize, BorshDeserialize, Debug, Serialize, Deserialize, Clone)]
 pub struct SetParamsEvent {
     pub initial_virtual_token_reserves: u64,
     pub initial_virtual_sol_reserves: u64,

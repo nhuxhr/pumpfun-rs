@@ -3,7 +3,7 @@ use std::sync::Arc;
 use solana_client::{nonblocking::rpc_client::RpcClient, rpc_client::SerializableTransaction};
 #[cfg(not(feature = "versioned-tx"))]
 use solana_sdk::transaction::Transaction;
-use solana_sdk::{instruction::Instruction, signature::Keypair, signer::Signer};
+use solana_sdk::{instruction::Instruction, signature::Keypair, signer::Signer, hash::Hash};
 #[cfg(feature = "versioned-tx")]
 use solana_sdk::{
     message::{v0, AddressLookupTableAccount, VersionedMessage},
@@ -145,6 +145,66 @@ pub async fn get_transaction(
             instructions,
             address_lookup_table_accounts.unwrap_or(&[]),
             recent_blockhash,
+        ) {
+            Ok(msg) => VersionedMessage::V0(msg),
+            Err(e) => {
+                return Err(error::ClientError::OtherError(format!(
+                    "Failed to compile transaction message: {}",
+                    e
+                )))
+            }
+        };
+
+        match VersionedTransaction::try_new(message, &all_signers) {
+            Ok(tx) => tx,
+            Err(e) => {
+                return Err(error::ClientError::OtherError(format!(
+                    "Failed to sign transaction: {}",
+                    e
+                )))
+            }
+        }
+    };
+
+    Ok(transaction)
+}
+
+pub fn get_transaction_offline_prepared(
+    recent_blockhash: &Hash,
+    _rpc: Arc<RpcClient>,
+    payer: Arc<Keypair>,
+    instructions: &[Instruction],
+    additional_signers: Option<&[&Keypair]>,
+    #[cfg(feature = "versioned-tx")] address_lookup_table_accounts: Option<
+        &[AddressLookupTableAccount],
+    >,
+) -> Result<impl SerializableTransaction, error::ClientError>  {
+    // Create a combined signers array with payer and additional signers
+    let mut all_signers =
+        Vec::with_capacity(1 + additional_signers.map_or(0, |signers| signers.len()));
+    all_signers.push(&*payer);
+
+    if let Some(signers) = additional_signers {
+        all_signers.extend(signers);
+    }
+
+    // Create and sign legacy transaction with all signers
+    #[cfg(not(feature = "versioned-tx"))]
+    let transaction = Transaction::new_signed_with_payer(
+        instructions,
+        Some(&payer.pubkey()),
+        &all_signers,
+        *recent_blockhash,
+    );
+
+    // Create and sign versioned transaction with all signers
+    #[cfg(feature = "versioned-tx")]
+    let transaction = {
+        let message = match v0::Message::try_compile(
+            &payer.pubkey(),
+            instructions,
+            address_lookup_table_accounts.unwrap_or(&[]),
+            *recent_blockhash,
         ) {
             Ok(msg) => VersionedMessage::V0(msg),
             Err(e) => {
